@@ -1,7 +1,6 @@
 require("dotenv").config();
 require("express-async-errors");
 // express
-
 const express = require("express");
 const app = express();
 // rest of the packages
@@ -32,12 +31,11 @@ app.use(helmet());
 app.use(cors());
 app.use(xss());
 app.use(mongoSanitize());
-
 app.use(express.json());
 app.use(cookieParser(process.env.JWT_SECRET));
-
 app.use(fileUpload());
 
+// general routes
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 
