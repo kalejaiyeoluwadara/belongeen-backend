@@ -6,7 +6,7 @@ const fs = require("fs");
 const multer = require("multer");
 const uploadCsv = multer({ dest: "uploads/csv" });
 const cloudinary = require("../config/cloudinary");
-
+const Shop = require("../models/Shop");
 const productController = {
   createSingleProduct: async (req, res) => {
     try {
@@ -33,14 +33,12 @@ const productController = {
       await product.save();
 
       // Check if product category exists in the database
-      const productCategory = await ProductCategory.findById(category).populate(
-        "products"
-      );
+      const shop = await Shop.findById(category).populate("products");
 
-      if (productCategory) {
+      if (shop) {
         // Add the newly created product to the products array of the existing category
-        productCategory.products.push(product);
-        await productCategory.save();
+        shop.products.push(product);
+        await shop.save();
       }
 
       // Set a timer to update isProductNew field after 48 hours
@@ -59,12 +57,12 @@ const productController = {
       const categoryId = req.params.id;
       // console.log('Category ID:', categoryId);
 
-      // Retrieve ProductCategory by ID
-      const productCategory = await ProductCategory.findById(categoryId);
+      // Retrieve Shop by ID
+      const shop = await Shop.findById(categoryId);
 
-      // Check if the ProductCategory exists
-      if (!productCategory) {
-        return res.status(404).json({ error: "Product Category not found" });
+      // Check if the Shop exists
+      if (!shop) {
+        return res.status(404).json({ error: "Shop not found" });
       }
 
       // console.log('Product Category:', productCategory.name);
@@ -72,7 +70,7 @@ const productController = {
 
       // Fetch all products in the category
       const products = await Product.find({
-        _id: { $in: productCategory.products },
+        _id: { $in: shop.products },
       }).populate("category", "name");
       console.log("Number of products fetched:", products.length);
 
@@ -154,7 +152,7 @@ const productController = {
   editProduct: async (req, res) => {
     try {
       const productId = req.params.id; // Get the product ID from the request parameters
-      const { productTitle, category, description } = req.body;
+      const { productTitle, category, description, price } = req.body;
 
       // Find the existing product by ID
       const product = await Product.findById(productId);
@@ -187,25 +185,13 @@ const productController = {
       product.category = category || product.category;
       product.description = description || product.description;
       product.images = imageUrls;
-      product.brand = brand || product.brand;
-      product.weight = weight || product.weight;
-      product.modelNumber = modelNumber || product.modelNumber;
-      product.mainMaterial = mainMaterial || product.mainMaterial;
-      product.color = color || product.color;
-      product.keyFeatures =
-        keyFeaturesArray.length > 0 ? keyFeaturesArray : product.keyFeatures;
-      product.size = size || product.size;
-      product.sku = sku || product.sku;
 
-      // Save the updated product
       await product.save();
 
       // Check if the product category has changed
       if (category && category !== product.category.toString()) {
-        const oldCategory = await ProductCategory.findById(product.category);
-        const newCategory = await ProductCategory.findById(category).populate(
-          "products"
-        );
+        const oldCategory = await Shop.findById(product.category);
+        const newCategory = await Shop.findById(category).populate("products");
 
         // Remove product from old category
         if (oldCategory) {
@@ -231,16 +217,11 @@ const productController = {
     try {
       const productId = req.params.id;
 
-      //Find the Product to get it's inventory
       const product = await Product.findById(productId);
 
       if (!product) {
         return res.status(404).json({ error: "Product not found" });
       }
-
-      //First delete the inventory associated with the product
-      const inventoryId = product.inventory;
-      await Inventory.findByIdAndDelete(inventoryId);
 
       //Delete the product itself
       await Product.findByIdAndDelete(productId);

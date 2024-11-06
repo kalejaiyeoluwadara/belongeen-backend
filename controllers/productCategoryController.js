@@ -1,6 +1,7 @@
 const ProductCategory = require("../models/ProductCategory");
 const cloudinary = require("cloudinary").v2;
 const Product = require("../models/Product");
+const Shop = require("../models/Shop");
 
 const productCategoryController = {
   createProductCategory: async (req, res) => {
@@ -144,11 +145,11 @@ const productCategoryController = {
       const productCategory = await ProductCategory.findById(productCategoryId);
 
       //Get the list of products associated with this category
-      const productIds = productCategory.products;
+      const productIds = productCategory.shops;
 
       //Loop through the product and delete it alongside it's inventory
       for (const productId of productIds) {
-        const product = await Product.findById(productId);
+        const product = await Shop.findById(productId);
 
         if (product) {
           //Then delete the Product itself

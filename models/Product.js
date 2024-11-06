@@ -6,9 +6,13 @@ const productSchema = new Schema({
     type: String,
     required: true,
   },
+  price: {
+    type: String,
+    required: true,
+  },
   category: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "ProductCategory",
+    ref: "Shop",
     required: true,
   },
   description: {

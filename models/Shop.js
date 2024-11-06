@@ -1,20 +1,21 @@
 const mongoose = require("mongoose");
 const { Schema, model } = mongoose;
 
-const productCategorySchema = new Schema({
+const shopSchema = new Schema({
   name: {
     type: String,
     required: true,
     unique: true,
   },
-  shops: [
+  image: {
+    type: String,
+    required: true,
+  },
+  products: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Shop",
+      ref: "Product",
     },
   ],
 });
-module.exports = ProductCategory = model(
-  "ProductCategory",
-  productCategorySchema
-);
+module.exports = Shop = model("ProductCategory", shopSchema);
