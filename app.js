@@ -52,3 +52,12 @@ const start = async () => {
 };
 
 start();
+// Todos
+// Create ProductCategory model
+// Create ProductCategory route
+// Create ProductCategory controller
+//  --create --get --update --delete
+// create prouduct model
+// create product route
+// create product controller
+// --create --get --update --delete --search
