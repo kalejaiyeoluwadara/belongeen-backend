@@ -1,14 +1,14 @@
-const ProductCategory = require("../models/ProductCategory");
-const cloudinary = require("cloudinary").v2;
+const Shop = require("../models/Shop"); // Adjust the path as necessary
 const Product = require("../models/Product");
-const Shop = require("../models/Shop");
+const cloudinary = require("../config/cloudinary");
 
 const shopController = {
+  // CREATE SHOP
   createShop: async (req, res) => {
     try {
       const { name } = req.body;
 
-      // Check if a category already exists with the same name
+      // Check if a shop already exists with the same name
       const existingShop = await Shop.findOne({ name });
       if (existingShop) {
         return res
@@ -16,124 +16,123 @@ const shopController = {
           .json({ error: "A shop with this name already exists" });
       }
 
-      let imageUrl = null;
-
-      // Check if a file was uploaded
-      if (req.file) {
-        try {
-          // Upload the single image to Cloudinary
-          const result = await cloudinary.uploader.upload(req.file.path, {
-            folder: "shop_images",
-          });
-          imageUrl = result.secure_url;
-        } catch (uploadError) {
-          console.error("Error uploading image to Cloudinary:", uploadError);
-          return res
-            .status(500)
-            .json({ error: "Error uploading image to Cloudinary" });
-        }
+      // Check if an image file was uploaded
+      if (!req.file) {
+        return res.status(400).json({ error: "Image file is required" });
       }
 
-      // If the category doesn't already exist, create a new one
+      // Upload the image to Cloudinary
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "shop_images",
+      });
+
+      // Create a new shop with the uploaded image URL
       const newShop = new Shop({
         name,
-        shop_image: imageUrl,
+        shop_image: result.secure_url, // Store the Cloudinary URL for the image
       });
       await newShop.save();
-      res.json({ message: "Shop successfully created" });
+
+      res
+        .status(201)
+        .json({ message: "Shop successfully created", shop: newShop });
     } catch (error) {
       console.error("Error creating shop:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      res.status(500).json({ error: "Internal server error" });
     }
   },
 
+  // GET ALL SHOPS
   getShops: async (req, res) => {
     try {
       const shops = await Shop.find();
-      if (!shops) {
-        return res.status(404).json({ error: "No Product Category found" });
+      if (!shops || shops.length === 0) {
+        return res.status(404).json({ error: "No shops found" });
       }
       res.json(shops);
     } catch (error) {
-      return res
+      res
         .status(500)
-        .json({ error: "Ooops!! an error occured, please refresh" });
+        .json({ error: "An error occurred, please try again later" });
     }
   },
 
+  // EDIT SHOP
   editShop: async (req, res) => {
     try {
       const shopId = req.params.id;
       const { name } = req.body;
 
+      // Check if a shop with the new name already exists (excluding the current one)
       const existingShop = await Shop.findOne({ name });
-
       if (existingShop && existingShop._id.toString() !== shopId) {
         return res
           .status(400)
-          .json({ error: "A product category with this name already exists." });
+          .json({ error: "A shop with this name already exists" });
       }
 
       let imageUrl = null;
 
-      //Check if a file was uploaded
+      // Check if a new image file was uploaded
       if (req.file) {
-        //Upload the single image to Cloudinary
+        // Upload the new image to Cloudinary
         const result = await cloudinary.uploader.upload(req.file.path, {
           folder: "shop_images",
         });
         imageUrl = result.secure_url;
       }
 
-      const updatedShop = await ProductCategory.findByIdAndUpdate(
+      // Update the shop's name and/or image
+      const updatedShop = await Shop.findByIdAndUpdate(
         shopId,
         {
           name,
-          shop_image: imageUrl,
+          shop_image: imageUrl || existingShop.shop_image, // Keep existing image if no new image is provided
         },
         { new: true }
       );
+
       if (!updatedShop) {
-        return res.status(404).json({ error: "Product Category not found" });
+        return res.status(404).json({ error: "Shop not found" });
       }
-      res.json({ message: "Shop updated" });
+
+      res.json({ message: "Shop updated", shop: updatedShop });
     } catch (error) {
+      console.error("Error updating shop:", error);
       res
         .status(500)
-        .json({ error: "Ooops!! an error occured, please refresh" });
+        .json({ error: "An error occurred, please try again later" });
     }
   },
+
+  // DELETE SHOP
   deleteShop: async (req, res) => {
     try {
       const shopId = req.params.id;
 
-      //Find the Shop to get the products appended to it
+      // Find the shop to delete
       const shop = await Shop.findById(shopId);
-
-      //Get the list of products associated with this category
-      const productIds = shop.products;
-
-      //Loop through the product and delete it
-      for (const productId of productIds) {
-        const product = await Product.findById(productId);
-
-        if (product) {
-          //Then delete the Product itself
-          await Product.findByIdAndDelete(productId);
-        }
+      if (!shop) {
+        return res.status(404).json({ error: "Shop not found" });
       }
 
-      //Delete the Product Category itself
-      await ProductCategory.findByIdAndDelete(shopId);
+      // Delete all associated products
+      const productIds = shop.products || [];
+      for (const productId of productIds) {
+        await Product.findByIdAndDelete(productId);
+      }
 
-      res.json({
-        message: "Shops and all associated products deleted",
-      });
+      // Delete the shop itself
+      await Shop.findByIdAndDelete(shopId);
+
+      res.json({ message: "Shop and all associated products deleted" });
     } catch (error) {
-      return res
+      console.error("Error deleting shop:", error);
+      res
         .status(500)
-        .json({ error: "Ooops!! an error occured, please refresh" });
+        .json({ error: "An error occurred, please try again later" });
     }
   },
 };
+
 module.exports = shopController;
