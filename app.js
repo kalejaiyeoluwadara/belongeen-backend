@@ -14,7 +14,9 @@ const xss = require("xss-clean");
 const cors = require("cors");
 const mongoSanitize = require("express-mongo-sanitize");
 const productRoutes = require("./routes/productRoute");
+const shopRoutes = require("./routes/shopRoute");
 const productCategoryRoutes = require("./routes/productsCategoryRoute");
+app.use(express.urlencoded({ extended: true }));
 // database
 const connectDB = require("./db/connect");
 
@@ -41,8 +43,9 @@ app.use(fileUpload());
 app.get("/", (req, res) => {
   res.send(`<h1>Welcome to Belongeen API</h1>`);
 });
-app.use(`${path}/product`, productRoutes);
 app.use(`${path}/product-category`, productCategoryRoutes);
+app.use(`${path}/shop`, shopRoutes);
+app.use(`${path}/product`, productRoutes);
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 
@@ -59,12 +62,3 @@ const start = async () => {
 };
 
 start();
-// Todos
-// Create ProductCategory model
-// Create ProductCategory route
-// Create ProductCategory controller
-//  --create --get --update --delete
-// create prouduct model
-// create product route
-// create product controller
-// --create --get --update --delete --search

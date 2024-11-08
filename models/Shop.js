@@ -7,10 +7,12 @@ const shopSchema = new Schema({
     required: true,
     unique: true,
   },
-  image: {
-    type: String,
-    required: true,
-  },
+  shop_image: [
+    {
+      type: String,
+      required: true,
+    },
+  ],
   products: [
     {
       type: mongoose.Schema.Types.ObjectId,
