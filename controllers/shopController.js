@@ -113,7 +113,7 @@ const shopController = {
       //Get the list of products associated with this category
       const productIds = shop.products;
 
-      //Loop through the product and delete it alongside it's inventory
+      //Loop through the product and delete it
       for (const productId of productIds) {
         const product = await Product.findById(productId);
 

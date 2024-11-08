@@ -30,11 +30,11 @@ const productSchema = new Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now(),
+    default: Date.now, // Removed parentheses to set function as default
   },
   updatedAt: {
     type: Date,
-    default: Date.now(),
+    default: Date.now, // Removed parentheses to set function as default
   },
 });
 

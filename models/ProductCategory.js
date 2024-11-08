@@ -14,7 +14,10 @@ const productCategorySchema = new Schema({
     },
   ],
 });
-module.exports = ProductCategory = model(
-  "ProductCategory",
-  productCategorySchema
-);
+
+// Use mongoose.model to avoid potential OverwriteModelError by checking if the model exists
+const ProductCategory =
+  mongoose.models.ProductCategory ||
+  model("ProductCategory", productCategorySchema);
+
+module.exports = ProductCategory;

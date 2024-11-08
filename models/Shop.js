@@ -18,4 +18,4 @@ const shopSchema = new Schema({
     },
   ],
 });
-module.exports = Shop = model("ProductCategory", shopSchema);
+module.exports = Shop = model("Shop", shopSchema);

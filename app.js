@@ -2,6 +2,7 @@ require("dotenv").config();
 require("express-async-errors");
 // express
 const express = require("express");
+const path = "/api/v1";
 const app = express();
 // rest of the packages
 const morgan = require("morgan");
@@ -12,7 +13,8 @@ const helmet = require("helmet");
 const xss = require("xss-clean");
 const cors = require("cors");
 const mongoSanitize = require("express-mongo-sanitize");
-
+const productRoutes = require("./routes/productRoute");
+const productCategoryRoutes = require("./routes/productsCategoryRoute");
 // database
 const connectDB = require("./db/connect");
 
@@ -36,6 +38,11 @@ app.use(cookieParser(process.env.JWT_SECRET));
 app.use(fileUpload());
 
 // general routes
+app.get("/", (req, res) => {
+  res.send(`<h1>Welcome to Belongeen API</h1>`);
+});
+app.use(`${path}/product`, productRoutes);
+app.use(`${path}/product-category`, productCategoryRoutes);
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 
