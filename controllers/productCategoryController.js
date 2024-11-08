@@ -16,28 +16,9 @@ const productCategoryController = {
           .json({ error: "A product category with this name already exists" });
       }
 
-      let imageUrl = null;
-
-      // Check if a file was uploaded
-      if (req.file) {
-        try {
-          // Upload the single image to Cloudinary
-          const result = await cloudinary.uploader.upload(req.file.path, {
-            folder: "product_category_images",
-          });
-          imageUrl = result.secure_url;
-        } catch (uploadError) {
-          console.error("Error uploading image to Cloudinary:", uploadError);
-          return res
-            .status(500)
-            .json({ error: "Error uploading image to Cloudinary" });
-        }
-      }
-
       // If the category doesn't already exist, create a new one
       const newProductCategory = new ProductCategory({
         name,
-        product_category_image: imageUrl,
       });
       await newProductCategory.save();
       res.json({ message: "Product category successfully created" });
@@ -107,23 +88,10 @@ const productCategoryController = {
           .status(400)
           .json({ error: "A product category with this name already exists." });
       }
-
-      let imageUrl = null;
-
-      //Check if a file was uploaded
-      if (req.file) {
-        //Upload the single image to Cloudinary
-        const result = await cloudinary.uploader.upload(req.file.path, {
-          folder: "product_category_images",
-        });
-        imageUrl = result.secure_url;
-      }
-
       const updatedProductCategory = await ProductCategory.findByIdAndUpdate(
         productCategoryId,
         {
           name,
-          product_category_image: imageUrl,
         },
         { new: true }
       );

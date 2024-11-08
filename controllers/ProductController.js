@@ -1,10 +1,6 @@
 const Product = require("../models/Product");
 const ProductCategory = require("../models/ProductCategory");
-const Inventory = require("../models/Inventory");
-const csv = require("csv-parser");
-const fs = require("fs");
 const multer = require("multer");
-const uploadCsv = multer({ dest: "uploads/csv" });
 const cloudinary = require("../config/cloudinary");
 const Shop = require("../models/Shop");
 const productController = {
