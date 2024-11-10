@@ -6,7 +6,7 @@ const shopController = {
   // CREATE SHOP
   createShop: async (req, res) => {
     try {
-      const { name } = req.body;
+      const { name, category } = req.body;
 
       // Check if a shop already exists with the same name
       const existingShop = await Shop.findOne({ name });
@@ -21,15 +21,11 @@ const shopController = {
         return res.status(400).json({ error: "Image file is required" });
       }
 
-      // Upload the image to Cloudinary
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "shop_images",
-      });
-
-      // Create a new shop with the uploaded image URL
+      // Create a new shop with the uploaded image URL from Cloudinary
       const newShop = new Shop({
         name,
-        shop_image: result.secure_url, // Store the Cloudinary URL for the image
+        category,
+        shop_image: req.file.path, // Use the Cloudinary URL directly from multer's response
       });
       await newShop.save();
 

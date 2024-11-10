@@ -14,7 +14,7 @@ router.post(
 
 router.get("/all-products", productController.fetchAllProducts);
 
-router.put("/:id", upload.array("images", 10), productController.editProduct);
+router.patch("/:id", upload.array("images", 10), productController.editProduct);
 router.delete("/:id", productController.deleteProduct);
 
 //Public Routes
