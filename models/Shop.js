@@ -7,6 +7,11 @@ const shopSchema = new Schema({
     required: true,
     unique: true,
   },
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "ProductCategory",
+    required: true,
+  },
   shop_image: [
     {
       type: String,

@@ -7,7 +7,6 @@ const app = express();
 // rest of the packages
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
-const fileUpload = require("express-fileupload");
 const rateLimiter = require("express-rate-limit");
 const helmet = require("helmet");
 const xss = require("xss-clean");
@@ -37,7 +36,6 @@ app.use(xss());
 app.use(mongoSanitize());
 app.use(express.json());
 app.use(cookieParser(process.env.JWT_SECRET));
-app.use(fileUpload());
 
 // general routes
 app.get("/", (req, res) => {

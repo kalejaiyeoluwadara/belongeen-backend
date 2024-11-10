@@ -6,29 +6,28 @@ const Shop = require("../models/Shop");
 const productController = {
   createSingleProduct: async (req, res) => {
     try {
-      const { productTitle, category, description } = req.body;
+      const { productTitle, category, description, price } = req.body;
 
-      // Upload images to Cloudinary
-      const uploadPromises = req.files.map((file) => {
-        return cloudinary.uploader.upload(file.path, {
-          folder: "product_images",
-        });
-      });
+      // Ensure images are uploaded
+      if (!req.files || req.files.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "At least one image file is required" });
+      }
 
-      const imageResults = await Promise.all(uploadPromises);
-      const imageUrls = imageResults.map((result) => result.secure_url);
-
+      const imageUrls = req.files.map((file) => file.path);
       const product = new Product({
         productTitle,
         category,
         description,
+        price,
         images: imageUrls,
         isProductNew: true,
       });
 
       await product.save();
 
-      // Check if product category exists in the database
+      // Check if the product category (shop) exists in the database
       const shop = await Shop.findById(category).populate("products");
 
       if (shop) {
@@ -37,13 +36,17 @@ const productController = {
         await shop.save();
       }
 
-      // Set a timer to update isProductNew field after 48 hours
+      // Set a timer to update `isProductNew` field after 48 hours (in milliseconds)
       setTimeout(async () => {
         await Product.findByIdAndUpdate(product._id, { isProductNew: false });
-      }, 1 * 10 * 60 * 1000); // 48 hours in milliseconds
-      res.json({ message: "Product Created Successfully", product });
+      }, 48 * 60 * 60 * 1000);
+
+      res
+        .status(201)
+        .json({ message: "Product Created Successfully", product });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      console.error("Error creating product:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   },
 
@@ -86,7 +89,7 @@ const productController = {
   },
   fetchAllProducts: async (req, res) => {
     try {
-      const totalProducts = await Product.find().populate("category", "name");
+      const totalProducts = await Product.find().populate("category");
       res.json(totalProducts);
     } catch (error) {
       return res
@@ -155,33 +158,36 @@ const productController = {
       if (!product) {
         return res.status(404).json({ error: "Product not found" });
       }
+
       // Handle image uploads if new files are provided
       let imageUrls = product.images; // Keep existing images by default
 
+      // Check if new images were uploaded
       if (req.files && req.files.length > 0) {
         const uploadPromises = req.files.map((file) => {
           return cloudinary.uploader.upload(file.path, {
-            folder: "product_images",
+            folder: "product_images", // Cloudinary folder where images will be stored
           });
         });
 
+        // Wait for all images to be uploaded to Cloudinary
         const imageResults = await Promise.all(uploadPromises);
+
+        // Extract URLs of uploaded images
         const newImageUrls = imageResults.map((result) => result.secure_url);
-        imageUrls = [...imageUrls, ...newImageUrls]; // Combine existing images with new ones
+
+        // Combine existing images with new ones (if any)
+        imageUrls = [...imageUrls, ...newImageUrls];
       }
 
-      // Handle keyFeatures array
-      const keyFeaturesArray = Array.isArray(keyFeatures)
-        ? keyFeatures
-        : [keyFeatures];
-
-      // Update product fields
+      // Update product fields with provided data or keep existing values
       product.productTitle = productTitle || product.productTitle;
       product.price = price || product.price;
       product.category = category || product.category;
       product.description = description || product.description;
-      product.images = imageUrls;
+      product.images = imageUrls; // Save the updated images
 
+      // Save the updated product
       await product.save();
 
       // Check if the product category has changed
