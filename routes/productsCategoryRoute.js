@@ -17,9 +17,8 @@ router.post(
   upload.single("category-image"),
   productCategoryController.createProductCategory
 );
-router.put(
+router.patch(
   "/edit-category/:id",
-  upload.single("category-image"),
   productCategoryController.editProductCategory
 );
 router.delete(

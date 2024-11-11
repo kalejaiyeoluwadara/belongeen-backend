@@ -1,9 +1,9 @@
 const express = require("express");
 const { Router } = express;
 const router = Router();
-const productController = require("../controllers/productController");
 // const authenticateAdmin = require("../middlewares/authenticateAdmin");
 const upload = require("../config/multer");
+const productController = require("../controllers/ProductController");
 
 //Private Routes
 router.post(
