@@ -61,6 +61,7 @@ const shopController = {
 
       // Check if a shop with the new name already exists (excluding the current one)
       const existingShop = await Shop.findOne({ name });
+
       if (existingShop && existingShop._id.toString() !== shopId) {
         return res
           .status(400)
@@ -83,7 +84,7 @@ const shopController = {
         shopId,
         {
           name,
-          shop_image: imageUrl || existingShop.shop_image, // Keep existing image if no new image is provided
+          shop_image: imageUrl || (existingShop && existingShop.shop_image), // Use optional chaining
         },
         { new: true }
       );
