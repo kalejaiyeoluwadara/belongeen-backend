@@ -9,7 +9,7 @@ router.post("/create-shop", upload.single("image"), shopController.createShop);
 
 router.get("/all-shops", shopController.getShops);
 
-router.put("/:id", upload.single("image"), shopController.editShop);
+router.patch("/:id", upload.single("image"), shopController.editShop);
 router.delete("/:id", shopController.deleteShop);
 
 module.exports = router;

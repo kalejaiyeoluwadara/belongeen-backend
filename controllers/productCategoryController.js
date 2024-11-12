@@ -21,7 +21,10 @@ const productCategoryController = {
         name,
       });
       await newProductCategory.save();
-      res.json({ message: "Product category successfully created" });
+      res.json({
+        message: "Product category successfully created",
+        newProductCategory,
+      });
     } catch (error) {
       console.error("Error creating category:", error);
       return res.status(500).json({ error: "Internal server error" });

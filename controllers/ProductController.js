@@ -3,6 +3,7 @@ const ProductCategory = require("../models/ProductCategory");
 const multer = require("multer");
 const cloudinary = require("../config/cloudinary");
 const Shop = require("../models/Shop");
+const { StatusCodes } = require("http-status-codes");
 const productController = {
   createSingleProduct: async (req, res) => {
     try {
@@ -119,33 +120,30 @@ const productController = {
     }
   },
   searchForProduct: async (req, res) => {
-    //These function will be used for searching products
     try {
-      const { query } = req.query; // Get the search query from the request
+      // Extract search term from query string
+      const { name } = req.query;
 
-      if (!query) {
-        return res.status(400).json({ error: "Search query is required" });
+      // Build the search query object
+      const queryObject = {};
+      if (name) {
+        queryObject.name = { $regex: name, $options: "i" };
       }
 
-      // Create a regex pattern for case-insensitive search
-      const searchPattern = new RegExp(query, "i");
+      // Perform the search using Product.find
+      const products = await Product.find(queryObject);
 
-      // Search for products matching the query in title, description, or brand
-      const products = await Product.find({
-        $or: [{ productTitle: searchPattern }, { brand: searchPattern }],
-      }).populate("category"); // Populate the category field if needed
-
-      if (products.length === 0) {
-        return res
-          .status(404)
-          .json({ message: "No products found matching the search query" });
+      // Handle successful search
+      if (products) {
+        return res.status(200).json({ products, nbHits: products.length });
+      } else {
+        // Handle no products found
+        return res.status(204).json({ message: "No products found" });
       }
-
-      res.json(products);
     } catch (error) {
-      return res
-        .status(500)
-        .json({ error: "Ooops!! an error occured, please refresh" });
+      // Handle any errors during search
+      console.error("Error searching for products:", error);
+      return res.status(500).json({ error: "An error occurred" });
     }
   },
   editProduct: async (req, res) => {
