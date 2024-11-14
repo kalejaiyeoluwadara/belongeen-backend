@@ -8,6 +8,7 @@ const upload = require("../config/multer");
 router.post("/create-shop", upload.single("image"), shopController.createShop);
 
 router.get("/all-shops", shopController.getShops);
+router.get("/category/:categoryId", shopController.viewShopsByCategory);
 
 router.patch("/:id", upload.single("image"), shopController.editShop);
 router.delete("/:id", shopController.deleteShop);

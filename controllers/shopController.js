@@ -1,7 +1,7 @@
 const Shop = require("../models/Shop"); // Adjust the path as necessary
 const Product = require("../models/Product");
 const cloudinary = require("../config/cloudinary");
-
+const ProductCategory = require("../models/ProductCategory");
 const shopController = {
   // CREATE SHOP
   createShop: async (req, res) => {
@@ -34,6 +34,35 @@ const shopController = {
         .json({ message: "Shop successfully created", shop: newShop });
     } catch (error) {
       console.error("Error creating shop:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+  viewShopsByCategory: async (req, res) => {
+    try {
+      const { categoryId } = req.params; // Get category ID from URL params
+
+      // Check if the product category exists
+      const category = await ProductCategory.findById(categoryId);
+      if (!category) {
+        console.log(categoryId);
+
+        return res.status(404).json({ error: "Category not found" });
+      }
+
+      // Find all shops that have the specified category ID
+      const shops = await Shop.find({ category: categoryId });
+
+      // If no shops are found for the category, return a 404 response
+      if (!shops || shops.length === 0) {
+        return res
+          .status(404)
+          .json({ error: "No shops found in this category" });
+      }
+
+      // Respond with the list of shops for the specified category
+      res.status(200).json({ shops });
+    } catch (error) {
+      console.error("Error retrieving shops by category:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   },
