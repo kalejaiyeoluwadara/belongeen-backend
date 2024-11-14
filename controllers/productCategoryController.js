@@ -30,6 +30,25 @@ const productCategoryController = {
       return res.status(500).json({ error: "Internal server error" });
     }
   },
+  getProductCategoryById: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Find the category by ID
+      const productCategory = await ProductCategory.findById(id).populate(
+        "shops"
+      );
+
+      if (!productCategory) {
+        return res.status(404).json({ error: "Product Category not found" });
+      }
+
+      res.json(productCategory);
+    } catch (error) {
+      console.error("Error retrieving product category:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
 
   getProductCategories: async (req, res) => {
     try {
