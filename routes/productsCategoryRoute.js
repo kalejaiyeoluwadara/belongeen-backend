@@ -6,6 +6,7 @@ const productCategoryController = require("../controllers/productCategoryControl
 
 //Public Routes
 router.get("/categories", productCategoryController.getProductCategories);
+router.get("/categories/:id", productCategoryController.getProductCategoryById);
 router.get(
   "/top-categories",
   productCategoryController.getTopProductCategories
