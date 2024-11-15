@@ -37,6 +37,23 @@ const shopController = {
       res.status(500).json({ error: "Internal server error" });
     }
   },
+  getShopById: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Find the category by ID
+      const shop = await Shop.findById(id);
+
+      if (!shop) {
+        return res.status(404).json({ error: "Shop not found" });
+      }
+
+      res.json(shop);
+    } catch (error) {
+      console.error("Error retrieving Shop:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
   viewShopsByCategory: async (req, res) => {
     try {
       const { categoryId } = req.params; // Get category ID from URL params
