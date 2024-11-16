@@ -42,7 +42,7 @@ const shopController = {
       const { id } = req.params;
 
       // Find the category by ID
-      const shop = await Shop.findById(id);
+      const shop = await Shop.findById(id).populate("products");
 
       if (!shop) {
         return res.status(404).json({ error: "Shop not found" });
