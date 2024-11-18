@@ -14,6 +14,7 @@ const cors = require("cors");
 const mongoSanitize = require("express-mongo-sanitize");
 const productRoutes = require("./routes/productRoute");
 const shopRoutes = require("./routes/shopRoute");
+const adminRoutes = require("./routes/AdminRoute");
 const productCategoryRoutes = require("./routes/productsCategoryRoute");
 app.use(express.urlencoded({ extended: true }));
 // database
@@ -44,6 +45,7 @@ app.get("/", (req, res) => {
 app.use(`${path}/product-category`, productCategoryRoutes);
 app.use(`${path}/shop`, shopRoutes);
 app.use(`${path}/product`, productRoutes);
+app.use(`${path}/admin`, adminRoutes);
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 
