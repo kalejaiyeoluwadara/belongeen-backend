@@ -14,14 +14,12 @@ router.post(
 
 router.get("/all-products", productController.fetchAllProducts);
 
+router.get("/search-products", productController.searchForProduct);
 router.patch("/:id", upload.array("images", 10), productController.editProduct);
 router.delete("/:id", productController.deleteProduct);
 
 //Public Routes
 router.get("/category/:id", productController.viewProductsByCategory);
 router.get("/:id", productController.getSingleProductDetails);
-// router.post("/index-products", productController.indexAllProducts);
-
-//Test Route
 
 module.exports = router;

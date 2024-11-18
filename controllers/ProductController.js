@@ -124,21 +124,26 @@ const productController = {
       // Extract search term from query string
       const { name } = req.query;
 
-      // Build the search query object
-      const queryObject = {};
-      if (name) {
-        queryObject.name = { $regex: name, $options: "i" };
+      if (!name) {
+        return res
+          .status(400)
+          .json({ error: "Search term 'name' is required" });
       }
+
+      // Build the search query object
+      const queryObject = {
+        productTitle: { $regex: name, $options: "i" },
+      };
 
       // Perform the search using Product.find
       const products = await Product.find(queryObject);
 
       // Handle successful search
-      if (products) {
+      if (products.length > 0) {
         return res.status(200).json({ products, nbHits: products.length });
       } else {
         // Handle no products found
-        return res.status(204).json({ message: "No products found" });
+        return res.status(404).json({ message: "No products found" });
       }
     } catch (error) {
       // Handle any errors during search
@@ -146,6 +151,7 @@ const productController = {
       return res.status(500).json({ error: "An error occurred" });
     }
   },
+
   editProduct: async (req, res) => {
     try {
       const productId = req.params.id; // Get the product ID from the request parameters
