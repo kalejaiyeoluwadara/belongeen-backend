@@ -14,6 +14,7 @@ const cors = require("cors");
 const mongoSanitize = require("express-mongo-sanitize");
 const productRoutes = require("./routes/productRoute");
 const shopRoutes = require("./routes/shopRoute");
+const orderRoutes = require("./routes/orderRoute");
 const adminRoutes = require("./routes/AdminRoute");
 const productCategoryRoutes = require("./routes/productsCategoryRoute");
 app.use(express.urlencoded({ extended: true }));
@@ -42,10 +43,11 @@ app.use(cookieParser(process.env.JWT_SECRET));
 app.get("/", (req, res) => {
   res.send(`<h1>Welcome to Belongeen API</h1>`);
 });
+app.use(`${path}/admin`, adminRoutes);
 app.use(`${path}/product-category`, productCategoryRoutes);
 app.use(`${path}/shop`, shopRoutes);
 app.use(`${path}/product`, productRoutes);
-app.use(`${path}/admin`, adminRoutes);
+app.use(`${path}/order`, orderRoutes);
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 
