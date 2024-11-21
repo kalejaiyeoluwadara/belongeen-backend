@@ -32,7 +32,7 @@ const orderController = {
 
   getAllOrders: async (req, res) => {
     try {
-      const orders = await Order.find().populate("user", "name email");
+      const orders = await Order.find();
       res.status(200).json(orders);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -42,13 +42,13 @@ const orderController = {
   getSingleOrder: async (req, res) => {
     try {
       const id = req.params.id;
-
-      const order = await Order.findById(id);
-
+      const order = await Order.findById(id).populate({
+        path: "orderItems.product", // Assuming orderItems has a field 'product' that references Product
+        select: "productTitle", // Specify the fields to return from Product
+      });
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }
-
       res.status(200).json(order);
     } catch (error) {
       res.status(500).json({ error: error.message });
