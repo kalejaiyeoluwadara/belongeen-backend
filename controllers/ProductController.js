@@ -90,41 +90,38 @@ const productController = {
   },
   relatedProducts: async (req, res) => {
     try {
-      // Get the category id
-      const categoryId = req.params.id;
-      // console.log('Category ID:', categoryId);
+      const productId = req.params.id;
 
-      // Retrieve Shop by ID
-      const shop = await Shop.findById(categoryId);
-
-      // Check if the Shop exists
-      if (!shop) {
-        return res.status(404).json({ error: "Shop not found" });
+      // Fetch the current product
+      const currentProduct = await Product.findById(productId);
+      if (!currentProduct) {
+        return res.status(404).json({ error: "Product not found" });
       }
 
-      // console.log('Product Category:', productCategory.name);
-      // console.log('Number of products in category:', productCategory.products.length);
+      // Find related products in the same category, excluding the current product
+      const related = await Product.find({
+        category: currentProduct.category,
+        _id: { $ne: productId }, // Exclude the current product
+      })
+        .limit(5) // Limit the number of related products
+        .populate(); // Populate category details if needed
 
-      // Fetch all products in the category
-      const products = await Product.find({
-        _id: { $in: shop.products },
-      }).populate("category", "name");
-      console.log("Number of products fetched:", products.length);
+      // Check if there are any related products
+      if (related.length === 0) {
+        return res
+          .status(404)
+          .json({ message: "No related products found for this category" });
+      }
 
-      // Reverse the order of products
-      const reversedProducts = products.reverse();
-
-      // console.log('First product after reversal:', reversedProducts[0]?.productTitle);
-      // console.log('Last product after reversal:', reversedProducts[reversedProducts.length - 1]?.productTitle);
-
-      res.json(reversedProducts);
+      res.status(200).json({ relatedProducts: related });
     } catch (error) {
-      console.error("Error in viewProductsByCategory:", error);
-      return res
+      console.error("Error fetching related products:", error);
+      res
         .status(500)
-        .json({ error: "Oops! An error occurred, please refresh" });
+        .json({ error: "An error occurred while fetching related products" });
     }
   },
+
   fetchAllProducts: async (req, res) => {
     try {
       const totalProducts = await Product.find().populate("category");
