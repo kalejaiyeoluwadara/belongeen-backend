@@ -88,6 +88,43 @@ const productController = {
         .json({ error: "Oops! An error occurred, please refresh" });
     }
   },
+  relatedProducts: async (req, res) => {
+    try {
+      // Get the category id
+      const categoryId = req.params.id;
+      // console.log('Category ID:', categoryId);
+
+      // Retrieve Shop by ID
+      const shop = await Shop.findById(categoryId);
+
+      // Check if the Shop exists
+      if (!shop) {
+        return res.status(404).json({ error: "Shop not found" });
+      }
+
+      // console.log('Product Category:', productCategory.name);
+      // console.log('Number of products in category:', productCategory.products.length);
+
+      // Fetch all products in the category
+      const products = await Product.find({
+        _id: { $in: shop.products },
+      }).populate("category", "name");
+      console.log("Number of products fetched:", products.length);
+
+      // Reverse the order of products
+      const reversedProducts = products.reverse();
+
+      // console.log('First product after reversal:', reversedProducts[0]?.productTitle);
+      // console.log('Last product after reversal:', reversedProducts[reversedProducts.length - 1]?.productTitle);
+
+      res.json(reversedProducts);
+    } catch (error) {
+      console.error("Error in viewProductsByCategory:", error);
+      return res
+        .status(500)
+        .json({ error: "Oops! An error occurred, please refresh" });
+    }
+  },
   fetchAllProducts: async (req, res) => {
     try {
       const totalProducts = await Product.find().populate("category");

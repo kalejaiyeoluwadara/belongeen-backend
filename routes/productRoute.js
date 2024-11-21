@@ -20,6 +20,7 @@ router.delete("/:id", productController.deleteProduct);
 
 //Public Routes
 router.get("/category/:id", productController.viewProductsByCategory);
+router.get("/related-products/:id", productController.relatedProducts);
 router.get("/:id", productController.getSingleProductDetails);
 
 module.exports = router;
