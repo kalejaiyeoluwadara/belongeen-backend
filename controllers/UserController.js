@@ -462,32 +462,31 @@ const userController = {
   editAccountProfile: async (req, res) => {
     try {
       const userId = req.user._id;
-      const { firstname, lastname, email, phone_number } = req.body;
+      const updates = req.body;
 
-      // const saltRounds = 12;
-      // const hashedPassword = await bcrypt.hash(password, saltRounds)
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No fields provided for update" });
+      }
 
-      const updatedProfile = await User.findByIdAndUpdate(
-        userId,
-        {
-          firstname,
-          lastname,
-          email,
-          // password: hashedPassword,
-          phone_number,
-        },
-        { new: true }
-      );
+      const updatedProfile = await User.findByIdAndUpdate(userId, updates, {
+        new: true,
+        runValidators: true,
+      });
 
       if (!updatedProfile) {
         return res.status(404).json({ error: "Profile not found" });
       }
 
-      res.json({ mesage: "Your Profile has been sucessfully updated" });
+      res.status(200).json({
+        message: "Your profile has been successfully updated",
+        profile: updatedProfile,
+      });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      console.error("Error updating profile:", error);
+      res.status(500).json({ error: "An internal server error occurred" });
     }
   },
+
   deleteAccount: async (req, res) => {
     try {
       const { password } = req.body;
