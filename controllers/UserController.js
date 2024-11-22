@@ -185,35 +185,32 @@ const userController = {
     }
   },
   signIn: async (req, res) => {
-    //SignIn is done with email and password
     try {
       const { email, password } = req.body;
 
+      // Check if the user exists
       const user = await User.findOne({ email });
-
       if (!user) {
         return res
           .status(422)
           .json({ error: "Invalid email or password, please retry" });
       }
-      const passwordMatch = await bcrypt.compare(password, user.password);
 
+      const passwordMatch = await bcrypt.compare(password, user.password);
       if (!passwordMatch) {
         return res
           .status(422)
-          .json({ error: "invalid email or password, please retry" });
+          .json({ error: "Invalid email or password, please retry" });
       }
 
-      // if (user.isVerified !== true) {
-      //   return res
-      //     .status(422)
-      //     .json({ error: "User email has not been verified" });
-      // }
-
-      //Generate token
-      //   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      //     expiresIn: "6h",
-      //   });
+      const token = jwt.sign(
+        {
+          id: user._id,
+          email: user.email,
+        },
+        process.env.JWT_SECRET || "belongeen",
+        { expiresIn: "50d" }
+      );
 
       const userProfile = {
         id: user._id,
@@ -227,9 +224,10 @@ const userController = {
     } catch (error) {
       return res
         .status(500)
-        .json({ error: "Ooops!! an error occured, please refresh" });
+        .json({ error: "Ooops!! An error occurred, please refresh" });
     }
   },
+
   addSavedItem: async (req, res) => {
     try {
       const userId = req.user._id;

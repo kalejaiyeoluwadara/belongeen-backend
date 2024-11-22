@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 // const authenticateUser = require("../middlewares/authenticateUsers");
 const userController = require("../controllers/UserController");
+const authMiddleware = require("../utils/authMiddleWare");
 
 //Public Routes
 router.post("/sign-up", userController.signUp);
@@ -28,8 +29,8 @@ router.delete(
 
   userController.deleteAccount
 );
-router.get("/:id", userController.viewAccountProfile);
+router.get("/:id", authMiddleware, userController.viewAccountProfile);
 router.post("/save-item/:id", userController.addSavedItem);
-router.post("/cart/:id", userController.addItemToCart);
+router.post("/cart/:id", authMiddleware, userController.addItemToCart);
 
 module.exports = router;
