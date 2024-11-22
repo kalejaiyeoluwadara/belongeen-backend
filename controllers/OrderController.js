@@ -62,10 +62,15 @@ const orderController = {
   getSingleOrder: async (req, res) => {
     try {
       const id = req.params.id;
-      const order = await Order.findById(id).populate({
-        path: "orderItems.product", // Assuming orderItems has a field 'product' that references Product
-        select: "productTitle", // Specify the fields to return from Product
-      });
+      const order = await Order.findById(id)
+        .populate({
+          path: "user",
+          select: "firstname lastname email phone_number address hall level",
+        })
+        .populate({
+          path: "orderItems.product",
+          select: "productTitle price images", // Specify product fields to return
+        });
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }
