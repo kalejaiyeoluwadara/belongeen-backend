@@ -16,6 +16,8 @@ const productRoutes = require("./routes/productRoute");
 const shopRoutes = require("./routes/shopRoute");
 const orderRoutes = require("./routes/orderRoute");
 const adminRoutes = require("./routes/AdminRoute");
+const userRoute = require("./routes/userRoute");
+
 const productCategoryRoutes = require("./routes/productsCategoryRoute");
 app.use(express.urlencoded({ extended: true }));
 // database
@@ -48,6 +50,7 @@ app.use(`${path}/product-category`, productCategoryRoutes);
 app.use(`${path}/shop`, shopRoutes);
 app.use(`${path}/product`, productRoutes);
 app.use(`${path}/order`, orderRoutes);
+app.use(`${path}/user`, userRoute);
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 

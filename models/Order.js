@@ -8,14 +8,10 @@ const orderSchema = new Schema({
     unique: true,
   },
   user: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
     required: true,
   },
-  phone: {
-    type: String,
-    required: true,
-  },
-
   date: {
     type: Date,
     default: Date.now(),
@@ -25,10 +21,6 @@ const orderSchema = new Schema({
     type: String,
     enum: ["Ongoing", "Delivered"],
     default: "Ongoing",
-  },
-  address: {
-    type: String,
-    required: true,
   },
   orderPrice: {
     type: Number,
