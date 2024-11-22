@@ -4,35 +4,55 @@ const User = require("../models/User");
 const orderController = {
   createOrder: async (req, res) => {
     try {
-      const { user, address, orderPrice, orderItems, phone } = req.body;
+      const userId = req.user._id;
+      const { orderPrice, orderItems } = req.body;
 
-      if (!user || !address || !orderPrice || !orderItems || !phone) {
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (!orderPrice || !orderItems) {
         return res.status(400).json({ error: "All fields are required" });
       }
 
+      // Generate a unique order ID (13-digit number)
       const orderId = Math.floor(Math.random() * 10 ** 13)
         .toString()
         .padStart(13, "0");
 
+      // Create a new order
       const newOrder = new Order({
         orderId,
         user,
-        address,
         orderPrice,
         orderItems,
-        phone,
       });
 
+      // Save the order to the database
       await newOrder.save();
+
+      // Respond with the created order
       res.status(201).json({ message: "Order created successfully", newOrder });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error("Error creating order:", error);
+      res
+        .status(500)
+        .json({ error: "An error occurred while creating the order" });
     }
   },
 
   getAllOrders: async (req, res) => {
     try {
-      const orders = await Order.find();
+      const orders = await Order.find()
+        .populate({
+          path: "user",
+          select: "firstname lastname email phone_number address hall level",
+        })
+        .populate({
+          path: "orderItems.product",
+          select: "productTitle price images", // Specify product fields to return
+        });
       res.status(200).json(orders);
     } catch (error) {
       res.status(500).json({ error: error.message });
