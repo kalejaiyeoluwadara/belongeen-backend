@@ -427,18 +427,34 @@ const userController = {
     try {
       const userId = req.user._id;
 
-      // Find user by id and populate cart items
       const user = await User.findById(userId).populate(
         "cart.product",
-        "productTitle price images brand"
+        "productTitle price images"
       );
+
       if (!user) {
         return res.status(404).json({
           error: "User not found, therefore items in cart can't be retrieved",
         });
       }
 
-      res.status(200).json({ cart: user.cart });
+      // Calculate the total amount in Naira
+      let totalAmount = 0;
+      user.cart.forEach((item) => {
+        totalAmount += item.product.price * item.qty; // Multiply price by quantity
+      });
+
+      // Format the total amount in Naira
+      const formattedTotalAmount = totalAmount.toLocaleString("en-NG", {
+        style: "currency",
+        currency: "NGN",
+      });
+
+      // Respond with the cart items and the total amount
+      res.status(200).json({
+        cart: user.cart,
+        totalAmount: formattedTotalAmount,
+      });
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
