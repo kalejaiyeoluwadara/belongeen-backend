@@ -7,13 +7,17 @@ const orderController = {
       const userId = req.user._id;
       const { orderPrice, orderItems } = req.body;
 
+      // Validate the user
       const user = await User.findById(userId);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
 
-      if (!orderPrice || !orderItems) {
-        return res.status(400).json({ error: "All fields are required" });
+      // Validate request body
+      if (!orderPrice || !orderItems || orderItems.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "Order price and items are required" });
       }
 
       // Generate a unique order ID (13-digit number)
@@ -36,9 +40,28 @@ const orderController = {
       res.status(201).json({ message: "Order created successfully", newOrder });
     } catch (error) {
       console.error("Error creating order:", error);
-      res
-        .status(500)
-        .json({ error: "An error occurred while creating the order" });
+
+      // Check for validation or database errors and send appropriate response
+      if (error.name === "ValidationError") {
+        return res.status(400).json({
+          error: "Validation error",
+          details: error.errors,
+        });
+      }
+
+      if (error.code && error.code === 11000) {
+        // Handle duplicate key error (e.g., unique constraint)
+        return res.status(409).json({
+          error: "Duplicate entry",
+          details: error.keyValue,
+        });
+      }
+
+      // Default to 500 for unexpected errors
+      res.status(500).json({
+        error: "An unexpected error occurred while creating the order",
+        details: error.message,
+      });
     }
   },
 
