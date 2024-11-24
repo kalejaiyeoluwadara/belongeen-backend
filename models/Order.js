@@ -23,7 +23,7 @@ const orderSchema = new Schema({
     default: "Ongoing",
   },
   orderPrice: {
-    type: Number,
+    type: String,
     required: true,
   },
   orderItems: [
