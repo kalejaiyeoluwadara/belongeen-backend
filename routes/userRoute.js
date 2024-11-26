@@ -24,6 +24,7 @@ router.patch(
 router.put("/cart", authMiddleware, userController.decrementCartItem);
 router.delete("/saved-item", authMiddleware, userController.removeSavedItem);
 router.delete("/cart", authMiddleware, userController.removeItemFromCart);
+router.delete("/carts", authMiddleware, userController.clearCart);
 router.delete("/delete-account", authMiddleware, userController.deleteAccount);
 router.get("/:id", authMiddleware, userController.viewAccountProfile);
 router.post("/save-item/:id", authMiddleware, userController.addSavedItem);
