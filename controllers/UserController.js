@@ -207,6 +207,8 @@ const userController = {
         {
           id: user._id,
           email: user.email,
+          address: user.address,
+          hall: user.hall,
         },
         process.env.JWT_SECRET || "belongeen",
         { expiresIn: "50d" }
