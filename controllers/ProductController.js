@@ -197,10 +197,10 @@ const productController = {
         return res.status(404).json({ error: "Product not found" });
       }
 
-      // Handle image uploads if new files are provided
-      let imageUrls = product.images; // Keep existing images by default
+      // Retain existing images unless new ones are uploaded
+      let imageUrls = product.images;
 
-      // Check if new images were uploaded
+      // Check if new images are uploaded
       if (req.files && req.files.length > 0) {
         const uploadPromises = req.files.map((file) => {
           return cloudinary.uploader.upload(file.path, {
@@ -214,7 +214,7 @@ const productController = {
         // Extract URLs of uploaded images
         const newImageUrls = imageResults.map((result) => result.secure_url);
 
-        // Combine existing images with new ones (if any)
+        // Combine existing images with new ones
         imageUrls = [...imageUrls, ...newImageUrls];
       }
 
