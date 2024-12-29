@@ -319,24 +319,26 @@ const userController = {
     try {
       const userId = req.user._id;
       const productId = req.params.id;
-      const { condiments } = req.body; // Extract condiments from the request body
+      const { condiments } = req.body;
 
-      // Find the user by ID
+      // Find the user
       const user = await User.findById(userId);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Check if product exists
+      // Find the product
       const product = await Product.findById(productId);
       if (!product) {
-        return res.status(404).json({ error: "Product Not found" });
+        return res.status(404).json({ error: "Product not found" });
       }
 
-      // Initialize cart if it's undefined
-      if (!user.cart) {
-        user.cart = [];
-      }
+      // Calculate total condiment price
+      const condimentPrice =
+        condiments?.reduce((total, item) => total + item.price, 0) || 0;
+
+      // Calculate total price (product + condiments)
+      const totalPrice = product.price + condimentPrice;
 
       // Check if the product is already in the cart
       const cartItem = user.cart.find(
@@ -344,17 +346,17 @@ const userController = {
       );
 
       if (cartItem) {
-        // If it exists, increment the quantity and update condiments if provided
+        // Increment quantity and update condiments
         cartItem.qty += 1;
-        if (condiments) {
-          cartItem.condiments = condiments; // Update condiments if provided
-        }
+        cartItem.condiments = condiments || [];
+        cartItem.totalPrice = totalPrice * cartItem.qty;
       } else {
-        // If it doesn't exist, add it to the cart with qty of 1 and the condiments
+        // Add new item to cart
         user.cart.push({
           product: productId,
           qty: 1,
-          condiments: condiments || [], // Default to empty array if no condiments provided
+          condiments: condiments || [],
+          totalPrice,
         });
       }
 
@@ -363,7 +365,7 @@ const userController = {
         .status(200)
         .json({ message: "Product added to cart", cart: user.cart });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   },
 
@@ -465,32 +467,39 @@ const userController = {
       );
 
       if (!user) {
-        return res.status(404).json({
-          error: "User not found, therefore items in cart can't be retrieved",
-        });
+        return res.status(404).json({ error: "User not found" });
       }
 
-      // Calculate the total amount in Naira
-      let totalAmount = 0;
-      user.cart.forEach((item) => {
-        totalAmount += item.product.price * item.qty; // Multiply price by quantity
+      // Calculate the total amount in the cart
+      let totalCartAmount = 0;
+
+      const cart = user.cart.map((item) => {
+        const productPrice = item.product.price;
+        const condimentPrice = item.condiments.reduce(
+          (total, condiment) => total + condiment.price,
+          0
+        );
+        const totalPrice = (productPrice + condimentPrice) * item.qty;
+        totalCartAmount += totalPrice;
+
+        return {
+          ...item.toObject(),
+          totalPrice,
+        };
       });
 
-      // Format the total amount in Naira
-      const formattedTotalAmount = totalAmount.toLocaleString("en-NG", {
-        style: "currency",
-        currency: "NGN",
-      });
-
-      // Respond with the cart items and the total amount
       res.status(200).json({
-        cart: user.cart,
-        totalAmount: formattedTotalAmount,
+        cart,
+        totalAmount: totalCartAmount.toLocaleString("en-NG", {
+          style: "currency",
+          currency: "NGN",
+        }),
       });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   },
+
   viewAccountProfile: async (req, res) => {
     try {
       const userId = req.user._id;
