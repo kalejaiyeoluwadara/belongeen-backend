@@ -319,6 +319,7 @@ const userController = {
     try {
       const userId = req.user._id;
       const productId = req.params.id;
+      const { condiments } = req.body; // Extract condiments from the request body
 
       // Find the user by ID
       const user = await User.findById(userId);
@@ -341,12 +342,20 @@ const userController = {
       const cartItem = user.cart.find(
         (item) => item.product.toString() === productId
       );
+
       if (cartItem) {
-        // If it exists, increment the quantity
+        // If it exists, increment the quantity and update condiments if provided
         cartItem.qty += 1;
+        if (condiments) {
+          cartItem.condiments = condiments; // Update condiments if provided
+        }
       } else {
-        // If it doesn't exist, add it to the cart with qty of 1
-        user.cart.push({ product: productId, qty: 1 });
+        // If it doesn't exist, add it to the cart with qty of 1 and the condiments
+        user.cart.push({
+          product: productId,
+          qty: 1,
+          condiments: condiments || [], // Default to empty array if no condiments provided
+        });
       }
 
       await user.save();
@@ -357,6 +366,7 @@ const userController = {
       return res.status(500).json({ error: error.message });
     }
   },
+
   decrementCartItem: async (req, res) => {
     try {
       const userId = req.user._id;
