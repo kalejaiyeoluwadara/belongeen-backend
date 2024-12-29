@@ -474,9 +474,9 @@ const userController = {
       let totalCartAmount = 0;
 
       const cart = user.cart.map((item) => {
-        const productPrice = item.product.price;
+        const productPrice = parseFloat(item.product.price); // Ensure it's a number
         const condimentPrice = item.condiments.reduce(
-          (total, condiment) => total + condiment.price,
+          (total, condiment) => total + parseFloat(condiment.price), // Ensure each condiment price is a number
           0
         );
         const totalPrice = (productPrice + condimentPrice) * item.qty;
