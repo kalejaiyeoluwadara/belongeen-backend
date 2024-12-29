@@ -49,10 +49,12 @@ const userSchema = new Schema({
         type: Number,
         default: 1,
       },
-      condiments: {
-        type: [String],
-        default: [], // Optional array of condiment names (can be empty)
-      },
+      condiments: [
+        {
+          name: { type: String },
+          price: { type: Number },
+        },
+      ],
     },
   ],
   purchaseHistory: [
