@@ -33,6 +33,12 @@ const orderSchema = new Schema({
         ref: "Product",
         required: true,
       },
+      condiments: [
+        {
+          name: { type: String },
+          price: { type: Number },
+        },
+      ],
       qty: {
         type: Number,
         required: true,
