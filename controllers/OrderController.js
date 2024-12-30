@@ -5,7 +5,7 @@ const orderController = {
   createOrder: async (req, res) => {
     try {
       const userId = req.user._id;
-      const { orderPrice, orderItems } = req.body;
+      const { orderPrice, orderItems, condiments } = req.body;
 
       // Validate the user
       const user = await User.findById(userId);
@@ -30,6 +30,7 @@ const orderController = {
         orderId,
         user,
         orderPrice,
+        condiments,
         orderItems,
       });
 
