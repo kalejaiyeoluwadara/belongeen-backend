@@ -55,7 +55,6 @@ const productController = {
     try {
       // Get the category id
       const categoryId = req.params.id;
-      // console.log('Category ID:', categoryId);
 
       // Retrieve Shop by ID
       const shop = await Shop.findById(categoryId);
@@ -64,9 +63,6 @@ const productController = {
       if (!shop) {
         return res.status(404).json({ error: "Shop not found" });
       }
-
-      // console.log('Product Category:', productCategory.name);
-      // console.log('Number of products in category:', productCategory.products.length);
 
       // Fetch all products in the category
       const products = await Product.find({
@@ -142,11 +138,6 @@ const productController = {
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
-      // Convert the product to a plain JavaScript object
-      // const productObject = product.toObject();
-
-      // Add the category name to the response
-      // productObject.categoryName = product.category ? product.category.name : null;
 
       res.json(product);
     } catch (error) {
@@ -253,6 +244,37 @@ const productController = {
       return res.status(500).json({ error: error.message });
     }
   },
+  updateProductExtras: async (req, res) => {
+    try {
+      const productId = req.params.id;
+      const { extras } = req.body;
+
+      // Validate that extras are provided
+      if (!extras || !Array.isArray(extras)) {
+        return res.status(400).json({ error: "Extras must be an array" });
+      }
+
+      // Find the product by ID
+      const product = await Product.findById(productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      // Update the extras field
+      product.extras = extras;
+
+      // Save the updated product
+      await product.save();
+
+      return res
+        .status(200)
+        .json({ message: "Extras updated successfully", product });
+    } catch (error) {
+      console.error("Error updating product extras:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  },
+
   deleteProduct: async (req, res) => {
     try {
       const productId = req.params.id;

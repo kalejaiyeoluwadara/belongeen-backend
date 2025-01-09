@@ -16,6 +16,7 @@ router.get("/all-products", productController.fetchAllProducts);
 
 router.get("/search-products", productController.searchForProduct);
 router.patch("/:id", upload.array("images", 10), productController.editProduct);
+router.patch("/products/:id", productController.updateProductExtras);
 router.delete("/:id", productController.deleteProduct);
 
 //Public Routes
