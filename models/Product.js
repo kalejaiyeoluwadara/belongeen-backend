@@ -30,12 +30,29 @@ const productSchema = new Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now, // Removed parentheses to set function as default
+    default: Date.now,
   },
   updatedAt: {
     type: Date,
-    default: Date.now, // Removed parentheses to set function as default
+    default: Date.now,
   },
+  extras: [
+    {
+      title: {
+        type: String,
+      },
+      options: [
+        {
+          name: {
+            type: String,
+          },
+          price: {
+            type: Number,
+          },
+        },
+      ],
+    },
+  ],
 });
 
 const Product = model("Product", productSchema);
