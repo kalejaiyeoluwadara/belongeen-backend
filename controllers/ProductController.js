@@ -248,7 +248,6 @@ const productController = {
     try {
       const productId = req.params.id;
       const { extras } = req.body;
-
       // Validate that extras are provided
       if (!extras || !Array.isArray(extras)) {
         return res.status(400).json({ error: "Extras must be an array" });
@@ -293,6 +292,93 @@ const productController = {
       return res
         .status(500)
         .json({ error: "Ooops!! an error occured, please refresh" });
+    }
+  },
+  deleteSpecificExtra: async (req, res) => {
+    try {
+      const productId = req.params.id;
+      const extraId = req.params.extraId;
+
+      // Find the product by ID
+      const product = await Product.findById(productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      // Filter out the extra to be deleted
+      product.extras = product.extras.filter(
+        (extra) => extra._id.toString() !== extraId
+      );
+
+      // Save the updated product
+      await product.save();
+
+      return res
+        .status(200)
+        .json({ message: "Extra deleted successfully", product });
+    } catch (error) {
+      console.error("Error deleting specific extra:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  },
+  deleteAllExtras: async (req, res) => {
+    try {
+      const productId = req.params.id;
+
+      // Find the product by ID
+      const product = await Product.findById(productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      // Clear the extras field
+      product.extras = [];
+
+      // Save the updated product
+      await product.save();
+
+      return res
+        .status(200)
+        .json({ message: "All extras deleted successfully", product });
+    } catch (error) {
+      console.error("Error deleting all extras:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  },
+  deleteSpecificOption: async (req, res) => {
+    try {
+      const productId = req.params.id; // Product ID
+      const extraId = req.params.extraId; // Extra ID
+      const optionId = req.params.optionId; // Option ID
+
+      // Find the product by ID
+      const product = await Product.findById(productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      // Find the specific extra
+      const extra = product.extras.find(
+        (extra) => extra._id.toString() === extraId
+      );
+      if (!extra) {
+        return res.status(404).json({ error: "Extra not found" });
+      }
+
+      // Filter out the option to be deleted
+      extra.options = extra.options.filter(
+        (option) => option._id.toString() !== optionId
+      );
+
+      // Save the updated product
+      await product.save();
+
+      return res
+        .status(200)
+        .json({ message: "Option deleted successfully", product });
+    } catch (error) {
+      console.error("Error deleting specific option:", error);
+      return res.status(500).json({ error: "Internal server error" });
     }
   },
 };
