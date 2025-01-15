@@ -18,6 +18,13 @@ router.get("/search-products", productController.searchForProduct);
 router.patch("/:id", upload.array("images", 10), productController.editProduct);
 router.patch("/products/:id", productController.updateProductExtras);
 router.delete("/:id", productController.deleteProduct);
+router.delete("/:id/extras/:extraId", productController.deleteSpecificExtra);
+router.delete("/:id/extras", productController.deleteAllExtras);
+// Delete a specific option in an extra
+router.delete(
+  "/:id/extras/:extraId/options/:optionId",
+  productController.deleteSpecificOption
+);
 
 //Public Routes
 router.get("/category/:id", productController.viewProductsByCategory);
