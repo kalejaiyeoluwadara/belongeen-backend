@@ -248,28 +248,45 @@ const productController = {
     try {
       const productId = req.params.id;
       const { extras } = req.body;
-      // Validate that extras are provided
-      if (!extras || !Array.isArray(extras)) {
-        return res.status(400).json({ error: "Extras must be an array" });
+
+      // Validate product ID
+      if (!productId) {
+        return res.status(400).json({ error: "Product ID is required" });
       }
 
-      // Find the product by ID
+      // Validate extras field
+      if (!Array.isArray(extras) || extras.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "Extras must be a non-empty array" });
+      }
+
+      // Fetch the product by ID
       const product = await Product.findById(productId);
+
       if (!product) {
         return res.status(404).json({ error: "Product not found" });
       }
 
-      // Update the extras field
-      product.extras = extras;
+      // Add new extras to the existing extras array
+      const existingExtras = product.extras || [];
+      product.extras = [...existingExtras, ...extras];
 
       // Save the updated product
       await product.save();
 
-      return res
-        .status(200)
-        .json({ message: "Extras updated successfully", product });
+      return res.status(200).json({
+        message: "Extras added successfully",
+        product,
+      });
     } catch (error) {
       console.error("Error updating product extras:", error);
+
+      // Handle specific known errors, if applicable
+      if (error.name === "CastError") {
+        return res.status(400).json({ error: "Invalid Product ID format" });
+      }
+
       return res.status(500).json({ error: "Internal server error" });
     }
   },
