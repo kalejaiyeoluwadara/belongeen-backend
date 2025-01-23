@@ -543,6 +543,119 @@ const userController = {
       res.status(500).json({ error: "An internal server error occurred" });
     }
   },
+  // change phone number
+  addPhoneNumber: async (req, res) => {
+    try {
+      const userId = req.user._id;
+      const { phone_number } = req.body;
+
+      if (!phone_number) {
+        return res.status(400).json({ error: "Phone number is required" });
+      }
+
+      const phoneRegex = /^0\d{10}$/;
+      if (!phoneRegex.test(phone_number)) {
+        return res.status(400).json({
+          error:
+            "Invalid phone number format. It should be 11 digits starting with 0.",
+        });
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { phone_number },
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.status(200).json({
+        message: "Phone number added/updated successfully",
+        user: updatedUser,
+      });
+    } catch (error) {
+      console.error("Error adding phone number:", error);
+      res.status(500).json({ error: "An internal server error occurred" });
+    }
+  },
+  //  change email
+  changeEmail: async (req, res) => {
+    try {
+      const userId = req.user._id;
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { email },
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.status(200).json({
+        message: "Email updated successfully",
+        user: updatedUser,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "An internal server error occurred" });
+    }
+  },
+  // change password
+  changePassword: async (req, res) => {
+    try {
+      const userId = req.user._id;
+      const { oldPassword, newPassword } = req.body;
+
+      if (!oldPassword || !newPassword) {
+        return res
+          .status(400)
+          .json({ error: "Both old and new passwords are required" });
+      }
+
+      const passwordRegex =
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+      if (!passwordRegex.test(newPassword)) {
+        return res.status(400).json({
+          error:
+            "New password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character",
+        });
+      }
+
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const isMatch = await bcrypt.compare(oldPassword, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ error: "Old password is incorrect" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      user.password = hashedPassword;
+      await user.save();
+
+      res.status(200).json({
+        message: "Password updated successfully",
+      });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ error: "An internal server error occurred" });
+    }
+  },
 
   deleteAccount: async (req, res) => {
     try {
