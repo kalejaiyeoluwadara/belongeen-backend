@@ -625,12 +625,10 @@ const userController = {
           .json({ error: "Both old and new passwords are required" });
       }
 
-      const passwordRegex =
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-      if (!passwordRegex.test(newPassword)) {
+      // Relaxed validation: Password must be at least 6 characters long
+      if (newPassword.length < 6) {
         return res.status(400).json({
-          error:
-            "New password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character",
+          error: "New password must be at least 6 characters long",
         });
       }
 
