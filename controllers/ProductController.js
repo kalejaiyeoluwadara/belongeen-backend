@@ -144,6 +144,25 @@ const productController = {
       return res.status(500).json({ error: error.message });
     }
   },
+  getSingleProductDetailsBySlug: async (req, res) => {
+    try {
+      const { slug } = req.params;
+
+      const product = await Product.findOne({ slug }).populate(
+        "category",
+        "name"
+      );
+
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      res.json(product);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  },
+
   searchForProduct: async (req, res) => {
     try {
       // Extract search term from query string

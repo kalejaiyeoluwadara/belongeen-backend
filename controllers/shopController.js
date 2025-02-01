@@ -54,6 +54,24 @@ const shopController = {
       res.status(500).json({ error: "Internal server error" });
     }
   },
+  getShopBySlug: async (req, res) => {
+    try {
+      const { slug } = req.params;
+
+      // Find the shop by slug
+      const shop = await Shop.findOne({ slug }).populate("products");
+
+      if (!shop) {
+        return res.status(404).json({ error: "Shop not found" });
+      }
+
+      res.json(shop);
+    } catch (error) {
+      console.error("Error retrieving Shop by slug:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+
   viewShopsByCategory: async (req, res) => {
     try {
       const { categoryId } = req.params; // Get category ID from URL params
