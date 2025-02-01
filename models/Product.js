@@ -36,6 +36,7 @@ const productSchema = new Schema({
     type: Date,
     default: Date.now,
   },
+  slug: { type: String, unique: true, required: true },
   extras: [
     {
       title: {
@@ -55,6 +56,32 @@ const productSchema = new Schema({
   ],
 });
 
-const Product = model("Product", productSchema);
+// Function to generate a slug
+async function generateUniqueSlug(title, productId = null) {
+  let baseSlug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
+  let slug = baseSlug;
+  let counter = 1;
+
+  // Check if slug exists
+  while (await Product.exists({ slug, _id: { $ne: productId } })) {
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+
+  return slug;
+}
+
+// Middleware to generate/update slug before saving
+productSchema.pre("save", async function (next) {
+  if (!this.slug || this.isModified("productTitle")) {
+    this.slug = await generateUniqueSlug(this.productTitle, this._id);
+  }
+  next();
+});
+
+const Product = model("Product", productSchema);
 module.exports = Product;
