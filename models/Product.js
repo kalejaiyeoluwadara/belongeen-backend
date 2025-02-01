@@ -56,7 +56,9 @@ const productSchema = new Schema({
   ],
 });
 
-// Function to generate a slug
+const Product = model("Product", productSchema);
+
+// Function to generate a unique slug
 async function generateUniqueSlug(title, productId = null) {
   let baseSlug = title
     .toLowerCase()
@@ -83,5 +85,4 @@ productSchema.pre("save", async function (next) {
   next();
 });
 
-const Product = model("Product", productSchema);
 module.exports = Product;
