@@ -1,11 +1,11 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
-const Product = require("./models/Product");
+const Shop = require("./models/Shop");
 const connectDB = require("./db/connect");
 
 // Function to generate a unique slug
-async function generateUniqueSlug(title, productId = null) {
-  let baseSlug = title
+async function generateUniqueSlug(name, shopId = null) {
+  let baseSlug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
@@ -13,7 +13,7 @@ async function generateUniqueSlug(title, productId = null) {
   let slug = baseSlug;
   let counter = 1;
 
-  while (await Product.exists({ slug, _id: { $ne: productId } })) {
+  while (await Shop.exists({ slug, _id: { $ne: shopId } })) {
     slug = `${baseSlug}-${counter}`;
     counter++;
   }
@@ -21,25 +21,20 @@ async function generateUniqueSlug(title, productId = null) {
   return slug;
 }
 
-// Function to update all products
-async function updateProductSlugs() {
+// Function to update all shops
+async function updateShopSlugs() {
   try {
     await connectDB(process.env.MONGO_URL);
 
-    const products = await Product.find({ slug: { $exists: false } });
+    const shops = await Shop.find({ slug: { $exists: false } });
 
-    for (let product of products) {
-      product.slug = await generateUniqueSlug(
-        product.productTitle,
-        product._id
-      );
-      await product.save();
-      console.log(
-        `Updated slug for: ${product.productTitle} -> ${product.slug}`
-      );
+    for (let shop of shops) {
+      shop.slug = await generateUniqueSlug(shop.name, shop._id);
+      await shop.save();
+      console.log(`Updated slug for: ${shop.name} -> ${shop.slug}`);
     }
 
-    console.log("✅ All products updated!");
+    console.log("✅ All shops updated!");
     mongoose.disconnect();
   } catch (error) {
     console.error("❌ Error updating slugs:", error);
@@ -48,4 +43,4 @@ async function updateProductSlugs() {
 }
 
 // Run the script
-updateProductSlugs();
+updateShopSlugs();

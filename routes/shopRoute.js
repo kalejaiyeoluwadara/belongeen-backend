@@ -12,6 +12,7 @@ router.get("/category/:categoryId", shopController.viewShopsByCategory);
 
 router.patch("/:id", upload.single("image"), shopController.editShop);
 router.get("/:id", shopController.getShopById);
+router.get("/slug/:slug", shopController.getShopBySlug);
 router.delete("/:id", shopController.deleteShop);
 
 module.exports = router;
