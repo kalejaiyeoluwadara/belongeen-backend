@@ -1,33 +1,51 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
-const Product = require("./models/Product"); // Your product model
-// Function to convert product name to a URL-friendly slug
-const generateSlug = (name) => {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-") // Replace spaces & special chars with "-"
-    .replace(/^-+|-+$/g, ""); // Trim leading/trailing "-"
-};
+const Product = require("./models/Product");
+const connectDB = require("./db/connect");
 
-// Connect to database
-mongoose
-  .connect(process.env.MONGO_URL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(async () => {
-    const products = await Product.find();
+// Function to generate a unique slug
+async function generateUniqueSlug(title, productId = null) {
+  let baseSlug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (await Product.exists({ slug, _id: { $ne: productId } })) {
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+
+  return slug;
+}
+
+// Function to update all products
+async function updateProductSlugs() {
+  try {
+    await connectDB(process.env.MONGO_URL);
+
+    const products = await Product.find({ slug: { $exists: false } });
 
     for (let product of products) {
-      if (!product.slug) {
-        // Only update if slug is missing
-        product.slug = generateSlug(product.productTitle);
-        await product.save();
-        console.log(`Updated: ${product.productTitle} -> ${product.slug}`);
-      }
+      product.slug = await generateUniqueSlug(
+        product.productTitle,
+        product._id
+      );
+      await product.save();
+      console.log(
+        `Updated slug for: ${product.productTitle} -> ${product.slug}`
+      );
     }
 
-    console.log("Slug update complete!");
+    console.log("✅ All products updated!");
     mongoose.disconnect();
-  })
-  .catch((err) => console.error("DB Connection Error:", err));
+  } catch (error) {
+    console.error("❌ Error updating slugs:", error);
+    mongoose.disconnect();
+  }
+}
+
+// Run the script
+updateProductSlugs();
