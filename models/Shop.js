@@ -9,7 +9,6 @@ const shopSchema = new Schema({
   },
   slug: {
     type: String,
-    required: true,
     unique: true,
   },
   category: {
@@ -31,25 +30,26 @@ const shopSchema = new Schema({
   ],
 });
 
-// Middleware to generate a unique slug before saving
 shopSchema.pre("save", async function (next) {
-  if (!this.isModified("name")) return next(); // Only generate slug if name changes
+  if (!this.slug || this.isModified("name")) {
+    let baseSlug = this.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
 
-  let baseSlug = this.name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    let slug = baseSlug;
+    let counter = 1;
 
-  let slug = baseSlug;
-  let counter = 1;
+    while (await this.constructor.findOne({ slug })) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
 
-  while (await mongoose.models.Shop.exists({ slug })) {
-    slug = `${baseSlug}-${counter}`;
-    counter++;
+    this.slug = slug;
   }
-
-  this.slug = slug;
   next();
 });
 
-module.exports = Shop = model("Shop", shopSchema);
+const Shop = model("Shop", shopSchema);
+
+module.exports = Shop;
