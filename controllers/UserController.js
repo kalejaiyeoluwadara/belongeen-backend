@@ -190,6 +190,7 @@ const userController = {
       const token = jwt.sign(
         {
           id: user._id,
+          fullName: user.fullName,
           phone_number: user.phone_number,
           address: user.address,
           hall: user.hall,
