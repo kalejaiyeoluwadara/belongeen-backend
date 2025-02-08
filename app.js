@@ -18,7 +18,7 @@ const orderRoutes = require("./routes/orderRoute");
 const adminRoutes = require("./routes/AdminRoute");
 const userRoute = require("./routes/userRoute");
 const MenuRoute = require("./routes/MenuRoute");
-
+const shopsCategoryRoutes = require("./routes/ShopsCategoryRoute");
 const productCategoryRoutes = require("./routes/productsCategoryRoute");
 app.use(express.urlencoded({ extended: true }));
 // database
@@ -47,6 +47,7 @@ app.get("/", (req, res) => {
   res.send(`<h1>Welcome to Belongeen API</h1>`);
 });
 app.use(`${path}/admin`, adminRoutes);
+app.use(`${path}/categories`, shopsCategoryRoutes);
 app.use(`${path}/product-category`, productCategoryRoutes);
 app.use(`${path}/shop`, shopRoutes);
 app.use(`${path}/product`, productRoutes);

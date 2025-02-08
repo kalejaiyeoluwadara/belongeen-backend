@@ -2,6 +2,7 @@ const Shop = require("../models/Shop"); // Adjust the path as necessary
 const Product = require("../models/Product");
 const cloudinary = require("../config/cloudinary");
 const ProductCategory = require("../models/ProductCategory");
+const ShopsCategory = require("../models/ShopsCategory");
 const shopController = {
   // CREATE SHOP
   createShop: async (req, res) => {
@@ -28,7 +29,13 @@ const shopController = {
         shop_image: req.file.path, // Use the Cloudinary URL directly from multer's response
       });
       await newShop.save();
-
+      if (category) {
+        await ShopsCategory.findByIdAndUpdate(
+          category,
+          { $push: { shops: newShop._id } }, // Add shop ID to the array
+          { new: true, runValidators: true }
+        );
+      }
       res
         .status(201)
         .json({ message: "Shop successfully created", shop: newShop });
