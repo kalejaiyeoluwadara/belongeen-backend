@@ -13,7 +13,7 @@ const shopSchema = new Schema({
   },
   category: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "ProductCategory",
+    ref: "ShopsCategory",
     required: true,
   },
   shop_image: [
