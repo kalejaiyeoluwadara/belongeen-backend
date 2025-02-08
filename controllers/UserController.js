@@ -15,24 +15,15 @@ const userController = {
   signUp: async (req, res) => {
     //SignUp is done with email and password
     try {
-      const {
-        email,
-        password,
-        firstname,
-        lastname,
-        level,
-        address,
-        hall,
-        phone_number,
-      } = req.body;
+      const { password, fullName, hall, phone_number } = req.body;
 
       //Check if user already exists in the database with the email
-      const existingUser = await User.findOne({ email });
+      const existingUser = await User.findOne({ phone_number });
 
       if (existingUser) {
         return res
           .status(400)
-          .json({ error: "An account with this email already exists" });
+          .json({ error: "An account with this phone number already exists" });
       }
 
       //Generate 5 digit otp
@@ -42,13 +33,9 @@ const userController = {
       const saltRounds = 12;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
       const user = new User({
-        email,
-        level,
         hall,
-        address,
         phone_number,
-        firstname,
-        lastname,
+        fullName,
         password: hashedPassword,
         otp,
         otpExpiry,
@@ -59,9 +46,6 @@ const userController = {
 
       // user.isVerified = false;
       await user.save();
-      //   res.json({
-      //     message: `We sent an OTP to ${email}, please verify `,
-      //   });
       res.status(StatusCodes.CREATED).json({ msg: "Created user", user });
     } catch (error) {
       return res.status(500).json({ error: error.message });
@@ -97,10 +81,10 @@ const userController = {
   },
   resendOtp: async (req, res) => {
     try {
-      const { email, firstname } = req.body;
+      const { phone_number, firstname } = req.body;
 
       //Check if user exists with the email
-      const existingUser = await User.findOne({ email });
+      const existingUser = await User.findOne({ phone_number });
 
       if (!existingUser) {
         return res.status(404).json({ error: "User does not exist" });
@@ -127,9 +111,9 @@ const userController = {
   },
   forgotPassword: async (req, res) => {
     try {
-      const { email } = req.body;
+      const { phone_number } = req.body;
 
-      const user = await User.findOne({ email });
+      const user = await User.findOne({ phone_number });
 
       if (!user) {
         return res.status(404).json({ error: "User does not exist" });
@@ -148,16 +132,16 @@ const userController = {
 
       //Save newly added Otp
       await user.save();
-      res.json({ message: `An OTP has been sent to ${email}` });
+      res.json({ message: `An OTP has been sent to ${phone_number}` });
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
   },
   resetPassword: async (req, res) => {
     try {
-      const { email, otp, password } = req.body;
+      const { phone_number, otp, password } = req.body;
 
-      const user = await User.findOne({ email });
+      const user = await User.findOne({ phone_number });
 
       if (!user) {
         return res.status(404).json({ error: "User not found" });
@@ -186,27 +170,27 @@ const userController = {
   },
   signIn: async (req, res) => {
     try {
-      const { email, password } = req.body;
+      const { phone_number, password } = req.body;
 
       // Check if the user exists
-      const user = await User.findOne({ email });
+      const user = await User.findOne({ phone_number });
       if (!user) {
         return res
           .status(422)
-          .json({ error: "Invalid email or password, please retry" });
+          .json({ error: "Invalid phone number or password, please retry" });
       }
 
       const passwordMatch = await bcrypt.compare(password, user.password);
       if (!passwordMatch) {
         return res
           .status(422)
-          .json({ error: "Invalid email or password, please retry" });
+          .json({ error: "Invalid phone number or password, please retry" });
       }
 
       const token = jwt.sign(
         {
           id: user._id,
-          email: user.email,
+          phone_number: user.phone_number,
           address: user.address,
           hall: user.hall,
         },
@@ -216,7 +200,7 @@ const userController = {
 
       const userProfile = {
         id: user._id,
-        email: user.email,
+        phone_number: user.phone_number,
         firstname: user.firstname,
         lastname: user.lastname,
         phone_number: user.phone_number,
