@@ -1,7 +1,6 @@
 const Shop = require("../models/Shop"); // Adjust the path as necessary
 const Product = require("../models/Product");
 const cloudinary = require("../config/cloudinary");
-const ProductCategory = require("../models/ProductCategory");
 const ShopsCategory = require("../models/ShopsCategory");
 const shopController = {
   // CREATE SHOP
@@ -84,7 +83,7 @@ const shopController = {
       const { categoryId } = req.params; // Get category ID from URL params
 
       // Check if the product category exists
-      const category = await ProductCategory.findById(categoryId);
+      const category = await ShopsCategory.findById(categoryId);
       if (!category) {
         console.log(categoryId);
 

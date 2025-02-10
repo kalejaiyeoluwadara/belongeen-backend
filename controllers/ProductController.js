@@ -1,5 +1,4 @@
 const Product = require("../models/Product");
-const ProductCategory = require("../models/ProductCategory");
 const multer = require("multer");
 const cloudinary = require("../config/cloudinary");
 const Shop = require("../models/Shop");
