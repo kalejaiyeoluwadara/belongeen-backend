@@ -1,3 +1,4 @@
+require("dotenv").config();
 const User = require("../models/User");
 const ProductCategory = require("../models/ProductCategory");
 const Product = require("../models/Product");
@@ -10,6 +11,30 @@ const { STATUS_CODES } = require("http");
 const { StatusCodes } = require("http-status-codes");
 const sendVerificationEmail = require("../utils/sendVerificationEmail");
 const sendPasswordResetEmail = require("../utils/sendResetEmail");
+const axios = require("axios");
+
+// function to send otp via whatsapp
+console.log("Termii API Key:", process.env.TERMII_API_KEY);
+const sendOTPViaWhatsApp = async (phone_number, otp) => {
+  try {
+    const response = await axios.post(
+      "https://v3.api.termii.com/api/whatsapp/send",
+      {
+        to: phone_number,
+        from: "Belongeen",
+        sms: `Your OTP is: ${otp}. It expires in 10 minutes.`,
+        api_key: process.env.TERMII_API_KEY,
+        channel: "generic",
+        type: "plain",
+      }
+    );
+
+    return response.data.code === "ok";
+  } catch (error) {
+    console.error("Termii API Error:", error.response?.data || error.message);
+    return false;
+  }
+};
 
 const userController = {
   signUp: async (req, res) => {
@@ -51,6 +76,7 @@ const userController = {
       return res.status(500).json({ error: error.message });
     }
   },
+
   verifyOtp: async (req, res) => {
     try {
       const { email, otp } = req.body;
@@ -79,36 +105,6 @@ const userController = {
       return res.status(500).json({ error: error.message });
     }
   },
-  resendOtp: async (req, res) => {
-    try {
-      const { phone_number, firstname } = req.body;
-
-      //Check if user exists with the email
-      const existingUser = await User.findOne({ phone_number });
-
-      if (!existingUser) {
-        return res.status(404).json({ error: "User does not exist" });
-      }
-
-      //If User exists, regenerate 5-digit otp
-      const otp = crypto.randomInt(10000, 100000);
-      const otpExpiry = Date.now() + 10 * 60 * 1000;
-
-      //Resend Mail
-      await sendVerificationEmail(email, otp, firstname);
-
-      //Set the New Otp and it's expiry time
-      existingUser.otp = otp;
-      existingUser.otpExpiry = otpExpiry;
-
-      //Re-save User to the database
-      await existingUser.save();
-
-      res.json({ message: `We sent an OTP to ${email}, please verify ` });
-    } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  },
   forgotPassword: async (req, res) => {
     try {
       const { phone_number } = req.body;
@@ -119,24 +115,66 @@ const userController = {
         return res.status(404).json({ error: "User does not exist" });
       }
 
-      //If User exists, generate 5-digit otp
+      // Generate a 5-digit OTP
       const otp = crypto.randomInt(10000, 100000);
-      const otpExpiry = Date.now() + 10 * 60 * 1000;
+      const otpExpiry = Date.now() + 10 * 60 * 1000; // 10 mins expiry
 
-      //Send mail
-      await sendPasswordResetEmail(email, otp);
+      // Send OTP via Termii WhatsApp
+      const sent = await sendOTPViaWhatsApp(phone_number, otp);
 
-      //Set the New OTP and it's expiry time
+      if (!sent) {
+        return res
+          .status(500)
+          .json({ error: "Failed to send OTP via WhatsApp" });
+      }
+
+      // Save OTP in user record
       user.otp = otp;
       user.otpExpiry = otpExpiry;
-
-      //Save newly added Otp
       await user.save();
-      res.json({ message: `An OTP has been sent to ${phone_number}` });
+
+      res.json({ message: `OTP has been sent to ${phone_number}` });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   },
+  // Function to resend otp
+  resendOtp: async (req, res) => {
+    try {
+      const { phone_number } = req.body;
+
+      // Check if user exists
+      const existingUser = await User.findOne({ phone_number });
+
+      if (!existingUser) {
+        return res.status(404).json({ error: "User does not exist" });
+      }
+
+      // Generate new OTP
+      const otp = crypto.randomInt(10000, 100000);
+      const otpExpiry = Date.now() + 10 * 60 * 1000; // 10 mins expiry
+
+      // Send OTP via Termii WhatsApp
+      const sent = await sendOTPViaWhatsApp(phone_number, otp);
+
+      if (!sent) {
+        return res
+          .status(500)
+          .json({ error: "Failed to send OTP via WhatsApp" });
+      }
+
+      // Update user OTP
+      existingUser.otp = otp;
+      existingUser.otpExpiry = otpExpiry;
+      await existingUser.save();
+
+      res.json({ message: `New OTP sent to ${phone_number}` });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  // Function to reset password
   resetPassword: async (req, res) => {
     try {
       const { phone_number, otp, password } = req.body;
@@ -168,6 +206,7 @@ const userController = {
       return res.status();
     }
   },
+
   signIn: async (req, res) => {
     try {
       const { phone_number, password } = req.body;
