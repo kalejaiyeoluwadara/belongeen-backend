@@ -12,20 +12,25 @@ const { StatusCodes } = require("http-status-codes");
 const sendVerificationEmail = require("../utils/sendVerificationEmail");
 const sendPasswordResetEmail = require("../utils/sendResetEmail");
 const axios = require("axios");
+const TERMII_API_KEY = process.env.TERMII_API_KEY;
+const TERMII_SENDER_ID = "Belongeen"; // Ensure this sender ID is approved
 
 // function to send otp via whatsapp
 console.log("Termii API Key:", process.env.TERMII_API_KEY);
 const sendOTPViaSMS = async (phone_number, otp) => {
   try {
-    const response = await axios.post("https://api.termii.com/api/sms/send", {
-      to: phone_number,
-      from: "Belongeen",
-      message: `Your OTP is: ${otp}. It expires in 10 minutes.`,
-      api_key: process.env.TERMII_API_KEY,
-      channel: "generic",
-      type: "plain",
-      media: null,
-    });
+    const response = await axios.post(
+      "https://v3.api.termii.com/api/sms/send",
+      {
+        to: phone_number,
+        from: "Belongeen",
+        sms: `Your OTP is: ${otp}. It expires in 10 minutes.`,
+        api_key: process.env.TERMII_API_KEY,
+        channel: "generic",
+        type: "plain",
+        media: null,
+      }
+    );
 
     // Check for successful response
     return (
@@ -37,8 +42,80 @@ const sendOTPViaSMS = async (phone_number, otp) => {
     return false;
   }
 };
+// Function to send OTP using Termii's Send Token API
+const sendOTPViaTermii = async (phone_number) => {
+  try {
+    const response = await axios.post(
+      "https://api.ng.termii.com/api/sms/otp/send",
+      {
+        api_key: TERMII_API_KEY,
+        message_type: "NUMERIC",
+        to: phone_number,
+        from: TERMII_SENDER_ID,
+        channel: "generic",
+        pin_attempts: 10,
+        pin_time_to_live: 5, // OTP expires in 5 minutes
+        pin_length: 6,
+        pin_placeholder: "< 123456 >",
+        message_text: "Your OTP is < 123456 >. It expires in 5 minutes.",
+        pin_type: "NUMERIC",
+      }
+    );
+
+    return response.data?.code === "ok"; // Check for successful response
+  } catch (error) {
+    console.error("Termii OTP Error:", error.response?.data || error.message);
+    return false;
+  }
+};
 
 const userController = {
+  signIn: async (req, res) => {
+    try {
+      const { phone_number, password } = req.body;
+
+      // Check if the user exists
+      const user = await User.findOne({ phone_number });
+      if (!user) {
+        return res
+          .status(422)
+          .json({ error: "Invalid phone number or password, please retry" });
+      }
+
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      if (!passwordMatch) {
+        return res
+          .status(422)
+          .json({ error: "Invalid phone number or password, please retry" });
+      }
+
+      const token = jwt.sign(
+        {
+          id: user._id,
+          fullName: user.fullName,
+          phone_number: user.phone_number,
+          address: user.address,
+          hall: user.hall,
+        },
+        process.env.JWT_SECRET || "belongeen",
+        { expiresIn: "50d" }
+      );
+
+      const userProfile = {
+        id: user._id,
+        phone_number: user.phone_number,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        phone_number: user.phone_number,
+      };
+
+      res.json({ token, userProfile });
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ error: "Ooops!! An error occurred, please refresh" });
+    }
+  },
   signUp: async (req, res) => {
     //SignUp is done with email and password
     try {
@@ -107,9 +184,22 @@ const userController = {
       return res.status(500).json({ error: error.message });
     }
   },
+  // Forgot Password Function
   forgotPassword: async (req, res) => {
     try {
-      const { phone_number } = req.body;
+      let { phone_number } = req.body;
+
+      // Validate phone number format
+      if (
+        !phone_number ||
+        phone_number.length !== 11 ||
+        !phone_number.startsWith("0")
+      ) {
+        return res.status(400).json({ error: "Invalid phone number format" });
+      }
+
+      // Convert to international format
+      const formattedPhoneNumber = `234${phone_number.slice(1)}`;
 
       const user = await User.findOne({ phone_number });
 
@@ -117,60 +207,14 @@ const userController = {
         return res.status(404).json({ error: "User does not exist" });
       }
 
-      // Generate a 5-digit OTP
-      const otp = crypto.randomInt(10000, 100000);
-      const otpExpiry = Date.now() + 10 * 60 * 1000; // 10 mins expiry
-
-      // Send OTP via Termii WhatsApp
-      const sent = await sendOTPViaWhatsApp(phone_number, otp);
+      // Send OTP via Termii
+      const sent = await sendOTPViaTermii(formattedPhoneNumber);
 
       if (!sent) {
-        return res
-          .status(500)
-          .json({ error: "Failed to send OTP via WhatsApp" });
+        return res.status(500).json({ error: "Failed to send OTP via TERMII" });
       }
 
-      // Save OTP in user record
-      user.otp = otp;
-      user.otpExpiry = otpExpiry;
-      await user.save();
-
-      res.json({ message: `OTP has been sent to ${phone_number}` });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-  // Function to resend otp
-  resendOtp: async (req, res) => {
-    try {
-      const { phone_number } = req.body;
-
-      // Check if user exists
-      const existingUser = await User.findOne({ phone_number });
-
-      if (!existingUser) {
-        return res.status(404).json({ error: "User does not exist" });
-      }
-
-      // Generate new OTP
-      const otp = crypto.randomInt(10000, 100000);
-      const otpExpiry = Date.now() + 10 * 60 * 1000; // 10 mins expiry
-
-      // Send OTP via Termii WhatsApp
-      const sent = await sendOTPViaWhatsApp(phone_number, otp);
-
-      if (!sent) {
-        return res
-          .status(500)
-          .json({ error: "Failed to send OTP via WhatsApp" });
-      }
-
-      // Update user OTP
-      existingUser.otp = otp;
-      existingUser.otpExpiry = otpExpiry;
-      await existingUser.save();
-
-      res.json({ message: `New OTP sent to ${phone_number}` });
+      res.json({ message: `OTP has been sent to ${formattedPhoneNumber}` });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -181,81 +225,69 @@ const userController = {
     try {
       const { phone_number, otp, password } = req.body;
 
-      const user = await User.findOne({ phone_number });
+      // Convert phone number to international format
+      const formattedPhoneNumber = `234${phone_number.slice(1)}`;
 
+      // Verify OTP with Termii
+      const isValidOTP = await verifyOTPWithTermii(formattedPhoneNumber, otp);
+
+      if (!isValidOTP) {
+        return res.status(400).json({ error: "Invalid or expired OTP" });
+      }
+
+      // Find user and update password
+      const user = await User.findOne({ phone_number });
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-      if (user.otp !== parseInt(otp)) {
-        return res.status(400).json({ error: "Invalid OTP" });
-      }
-      if (Date.now() > user.otpExpiry) {
-        return res.status(400).json({ error: "OTP expired" });
-      }
 
-      const saltHash = 12;
-
-      const hashNewPassword = await bcrypt.hash(password, saltHash);
-
+      const hashNewPassword = await bcrypt.hash(password, 12);
       user.password = hashNewPassword;
-      user.otp = null;
-      user.otpExpiry = null;
 
       await user.save();
 
       res.json({ message: "Password updated successfully" });
     } catch (error) {
-      return res.status();
+      res.status(500).json({ error: error.message });
     }
   },
 
-  signIn: async (req, res) => {
+  // Resend OTP Function
+  resendOtp: async (req, res) => {
     try {
-      const { phone_number, password } = req.body;
+      let { phone_number } = req.body;
 
-      // Check if the user exists
+      // Validate phone number
+      if (
+        !phone_number ||
+        phone_number.length !== 11 ||
+        !phone_number.startsWith("0")
+      ) {
+        return res.status(400).json({ error: "Invalid phone number format" });
+      }
+
+      // Convert to international format
+      const formattedPhoneNumber = `234${phone_number.slice(1)}`;
+
+      // Check if user exists
       const user = await User.findOne({ phone_number });
+
       if (!user) {
-        return res
-          .status(422)
-          .json({ error: "Invalid phone number or password, please retry" });
+        return res.status(404).json({ error: "User does not exist" });
       }
 
-      const passwordMatch = await bcrypt.compare(password, user.password);
-      if (!passwordMatch) {
-        return res
-          .status(422)
-          .json({ error: "Invalid phone number or password, please retry" });
+      // Send OTP via Termii
+      const sent = await sendOTPViaTermii(formattedPhoneNumber);
+
+      if (!sent) {
+        return res.status(500).json({ error: "Failed to resend OTP via SMS" });
       }
 
-      const token = jwt.sign(
-        {
-          id: user._id,
-          fullName: user.fullName,
-          phone_number: user.phone_number,
-          address: user.address,
-          hall: user.hall,
-        },
-        process.env.JWT_SECRET || "belongeen",
-        { expiresIn: "50d" }
-      );
-
-      const userProfile = {
-        id: user._id,
-        phone_number: user.phone_number,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        phone_number: user.phone_number,
-      };
-
-      res.json({ token, userProfile });
+      res.json({ message: `New OTP sent to ${formattedPhoneNumber}` });
     } catch (error) {
-      return res
-        .status(500)
-        .json({ error: "Ooops!! An error occurred, please refresh" });
+      res.status(500).json({ error: error.message });
     }
   },
-
   addSavedItem: async (req, res) => {
     try {
       const userId = req.user._id;
