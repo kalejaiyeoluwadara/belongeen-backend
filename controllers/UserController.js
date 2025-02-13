@@ -15,21 +15,23 @@ const axios = require("axios");
 
 // function to send otp via whatsapp
 console.log("Termii API Key:", process.env.TERMII_API_KEY);
-const sendOTPViaWhatsApp = async (phone_number, otp) => {
+const sendOTPViaSMS = async (phone_number, otp) => {
   try {
-    const response = await axios.post(
-      "https://v3.api.termii.com/api/whatsapp/send",
-      {
-        to: phone_number,
-        from: "Belongeen",
-        sms: `Your OTP is: ${otp}. It expires in 10 minutes.`,
-        api_key: process.env.TERMII_API_KEY,
-        channel: "generic",
-        type: "plain",
-      }
-    );
+    const response = await axios.post("https://api.termii.com/api/sms/send", {
+      to: phone_number,
+      from: "Belongeen",
+      message: `Your OTP is: ${otp}. It expires in 10 minutes.`,
+      api_key: process.env.TERMII_API_KEY,
+      channel: "generic",
+      type: "plain",
+      media: null,
+    });
 
-    return response.data.code === "ok";
+    // Check for successful response
+    return (
+      response.data.message === "Successfully Sent" ||
+      response.data.code === "ok"
+    );
   } catch (error) {
     console.error("Termii API Error:", error.response?.data || error.message);
     return false;
