@@ -7,65 +7,66 @@ const jwt = require("jsonwebtoken");
 const Order = require("../models/Order");
 const crypto = require("crypto");
 const mongoose = require("mongoose");
-const { STATUS_CODES } = require("http");
 const { StatusCodes } = require("http-status-codes");
 const sendVerificationEmail = require("../utils/sendVerificationEmail");
 const sendPasswordResetEmail = require("../utils/sendResetEmail");
-const axios = require("axios");
-const TERMII_API_KEY = process.env.TERMII_API_KEY;
-const TERMII_SENDER_ID = "Belongeen"; // Ensure this sender ID is approved
+// Twilio setup
+const twilio = require("twilio");
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
 
-// function to send otp via whatsapp
-console.log("Termii API Key:", process.env.TERMII_API_KEY);
+// Log Twilio credentials for debugging (remove in production)
+console.log("Twilio Account SID:", process.env.TWILIO_ACCOUNT_SID);
+
+// Function to send OTP via SMS using Twilio
 const sendOTPViaSMS = async (phone_number, otp) => {
   try {
-    const response = await axios.post(
-      "https://v3.api.termii.com/api/sms/send",
-      {
-        to: phone_number,
-        from: "Belongeen",
-        sms: `Your OTP is: ${otp}. It expires in 10 minutes.`,
-        api_key: process.env.TERMII_API_KEY,
-        channel: "generic",
-        type: "plain",
-        media: null,
-      }
-    );
+    // Ensure phone number is in international format
+    let formattedNumber = phone_number;
+    if (phone_number.startsWith("0")) {
+      formattedNumber = `+234${phone_number.slice(1)}`;
+    } else if (!phone_number.startsWith("+")) {
+      formattedNumber = `+${phone_number}`;
+    }
 
-    // Check for successful response
-    return (
-      response.data.message === "Successfully Sent" ||
-      response.data.code === "ok"
-    );
+    const message = await twilioClient.messages.create({
+      body: `Your Belongeen OTP is: ${otp}. It expires in 10 minutes.`,
+      from: TWILIO_PHONE_NUMBER,
+      to: formattedNumber,
+    });
+
+    console.log(`SMS sent with SID: ${message.sid}`);
+    return true;
   } catch (error) {
-    console.error("Termii API Error:", error.response?.data || error.message);
+    console.error("Twilio SMS Error:", error);
     return false;
   }
 };
-// Function to send OTP using Termii's Send Token API
-const sendOTPViaTermii = async (phone_number) => {
-  try {
-    const response = await axios.post(
-      "https://api.ng.termii.com/api/sms/otp/send",
-      {
-        api_key: TERMII_API_KEY,
-        message_type: "NUMERIC",
-        to: phone_number,
-        from: TERMII_SENDER_ID,
-        channel: "generic",
-        pin_attempts: 10,
-        pin_time_to_live: 5, // OTP expires in 5 minutes
-        pin_length: 6,
-        pin_placeholder: "< 123456 >",
-        message_text: "Your OTP is < 123456 >. It expires in 5 minutes.",
-        pin_type: "NUMERIC",
-      }
-    );
 
-    return response.data?.code === "ok"; // Check for successful response
+// Function to generate and send OTP
+const generateAndSendOTP = async (phone_number) => {
+  try {
+    // Generate 6-digit OTP
+    const otp = crypto.randomInt(100000, 999999);
+
+    // Send OTP via Twilio
+    const sent = await sendOTPViaSMS(phone_number, otp);
+
+    if (!sent) {
+      throw new Error("Failed to send OTP");
+    }
+
+    // Return OTP and expiry for storage in the database
+    return {
+      otp,
+      otpExpiry: Date.now() + 10 * 60 * 1000, // 10 minutes expiry
+    };
   } catch (error) {
-    console.error("Termii OTP Error:", error.response?.data || error.message);
-    return false;
+    console.error("OTP Generation Error:", error);
+    throw error;
   }
 };
 
@@ -94,11 +95,10 @@ const userController = {
           id: user._id,
           fullName: user.fullName,
           phone_number: user.phone_number,
-          address: user.address,
           hall: user.hall,
         },
         process.env.JWT_SECRET || "belongeen",
-        { expiresIn: "50d" }
+        { expiresIn: "100d" }
       );
 
       const userProfile = {
@@ -190,16 +190,9 @@ const userController = {
       let { phone_number } = req.body;
 
       // Validate phone number format
-      if (
-        !phone_number ||
-        phone_number.length !== 11 ||
-        !phone_number.startsWith("0")
-      ) {
+      if (!phone_number || phone_number.length < 10) {
         return res.status(400).json({ error: "Invalid phone number format" });
       }
-
-      // Convert to international format
-      const formattedPhoneNumber = `234${phone_number.slice(1)}`;
 
       const user = await User.findOne({ phone_number });
 
@@ -207,14 +200,18 @@ const userController = {
         return res.status(404).json({ error: "User does not exist" });
       }
 
-      // Send OTP via Termii
-      const sent = await sendOTPViaTermii(formattedPhoneNumber);
+      // Generate and send OTP
+      const { otp, otpExpiry } = await generateAndSendOTP(phone_number);
 
-      if (!sent) {
-        return res.status(500).json({ error: "Failed to send OTP via TERMII" });
-      }
+      // Save OTP to user record
+      user.otp = otp;
+      user.otpExpiry = otpExpiry;
+      await user.save();
 
-      res.json({ message: `OTP has been sent to ${formattedPhoneNumber}` });
+      res.json({
+        message: `OTP has been sent to your phone number`,
+        userId: user._id,
+      });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -225,24 +222,26 @@ const userController = {
     try {
       const { phone_number, otp, password } = req.body;
 
-      // Convert phone number to international format
-      const formattedPhoneNumber = `234${phone_number.slice(1)}`;
-
-      // Verify OTP with Termii
-      const isValidOTP = await verifyOTPWithTermii(formattedPhoneNumber, otp);
-
-      if (!isValidOTP) {
-        return res.status(400).json({ error: "Invalid or expired OTP" });
-      }
-
-      // Find user and update password
+      // Find user
       const user = await User.findOne({ phone_number });
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
 
+      // Verify OTP
+      if (user.otp !== parseInt(otp)) {
+        return res.status(400).json({ error: "Invalid OTP" });
+      }
+
+      if (Date.now() > user.otpExpiry) {
+        return res.status(400).json({ error: "OTP expired" });
+      }
+
+      // Update password
       const hashNewPassword = await bcrypt.hash(password, 12);
       user.password = hashNewPassword;
+      user.otp = null;
+      user.otpExpiry = null;
 
       await user.save();
 
@@ -252,38 +251,25 @@ const userController = {
     }
   },
 
-  // Resend OTP Function
-  resendOtp: async (req, res) => {
+  // Function to resend OTP
+  resendOTP: async (req, res) => {
     try {
-      let { phone_number } = req.body;
+      const { phone_number } = req.body;
 
-      // Validate phone number
-      if (
-        !phone_number ||
-        phone_number.length !== 11 ||
-        !phone_number.startsWith("0")
-      ) {
-        return res.status(400).json({ error: "Invalid phone number format" });
-      }
-
-      // Convert to international format
-      const formattedPhoneNumber = `234${phone_number.slice(1)}`;
-
-      // Check if user exists
       const user = await User.findOne({ phone_number });
-
       if (!user) {
-        return res.status(404).json({ error: "User does not exist" });
+        return res.status(404).json({ error: "User not found" });
       }
 
-      // Send OTP via Termii
-      const sent = await sendOTPViaTermii(formattedPhoneNumber);
+      // Generate new OTP
+      const { otp, otpExpiry } = await generateAndSendOTP(phone_number);
 
-      if (!sent) {
-        return res.status(500).json({ error: "Failed to resend OTP via SMS" });
-      }
+      // Update user record
+      user.otp = otp;
+      user.otpExpiry = otpExpiry;
+      await user.save();
 
-      res.json({ message: `New OTP sent to ${formattedPhoneNumber}` });
+      res.json({ message: "New OTP sent successfully" });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
