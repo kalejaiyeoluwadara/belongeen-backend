@@ -21,8 +21,11 @@ const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
 // Log Twilio credentials for debugging (remove in production)
 console.log("Twilio Account SID:", process.env.TWILIO_ACCOUNT_SID);
 
-// Function to send OTP via SMS using Twilio
-const sendOTPViaSMS = async (phone_number, otp) => {
+// Setup Twilio Verify
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+
+// Function to send verification code using Twilio Verify
+const sendVerificationCode = async (phone_number) => {
   try {
     // Ensure phone number is in international format
     let formattedNumber = phone_number;
@@ -32,41 +35,50 @@ const sendOTPViaSMS = async (phone_number, otp) => {
       formattedNumber = `+${phone_number}`;
     }
 
-    const message = await twilioClient.messages.create({
-      body: `Your Belongeen OTP is: ${otp}. It expires in 10 minutes.`,
-      from: TWILIO_PHONE_NUMBER,
-      to: formattedNumber,
-    });
+    console.log("Sending verification to:", formattedNumber);
 
-    console.log(`SMS sent with SID: ${message.sid}`);
-    return true;
+    // Create verification request
+    const verification = await twilioClient.verify.v2
+      .services(process.env.TWILIO_VERIFY_SERVICE_ID) // Use the correct Verify Service SID
+      .verifications.create({
+        to: formattedNumber,
+        channel: "sms",
+      });
+
+    console.log(
+      `Verification SID: ${verification.sid}, Status: ${verification.status}`
+    );
+    return { success: verification.status === "pending" };
   } catch (error) {
-    console.error("Twilio SMS Error:", error);
-    return false;
+    console.error("Twilio Verify Error:", error);
+    console.error("Error Details:", error.details || "No details available");
+    return { success: false, error };
   }
 };
 
-// Function to generate and send OTP
-const generateAndSendOTP = async (phone_number) => {
+// Function to check verification code
+const verifyOTP = async (phone_number, otp) => {
   try {
-    // Generate 6-digit OTP
-    const otp = crypto.randomInt(100000, 999999);
-
-    // Send OTP via Twilio
-    const sent = await sendOTPViaSMS(phone_number, otp);
-
-    if (!sent) {
-      throw new Error("Failed to send OTP");
+    // Ensure phone number is in international format
+    let formattedNumber = phone_number;
+    if (phone_number.startsWith("0")) {
+      formattedNumber = `+234${phone_number.slice(1)}`;
+    } else if (!phone_number.startsWith("+")) {
+      formattedNumber = `+${phone_number}`;
     }
 
-    // Return OTP and expiry for storage in the database
-    return {
-      otp,
-      otpExpiry: Date.now() + 10 * 60 * 1000, // 10 minutes expiry
-    };
+    // Check the verification code
+    const verification_check = await twilioClient.verify.v2
+      .services(TWILIO_VERIFY_SERVICE_ID)
+      .verificationChecks.create({
+        to: formattedNumber,
+        code: otp,
+      });
+
+    return verification_check.status === "approved";
   } catch (error) {
-    console.error("OTP Generation Error:", error);
-    throw error;
+    console.error("Twilio Verify Check Error:", error);
+    return false;
   }
 };
 
@@ -200,16 +212,21 @@ const userController = {
         return res.status(404).json({ error: "User does not exist" });
       }
 
-      // Generate and send OTP
-      const { otp, otpExpiry } = await generateAndSendOTP(phone_number);
+      // Send verification code
+      const result = await sendVerificationCode(phone_number);
 
-      // Save OTP to user record
-      user.otp = otp;
-      user.otpExpiry = otpExpiry;
-      await user.save();
+      if (!result.success) {
+        return res.status(500).json({
+          error: "Failed to send verification code",
+          details: result.error?.message,
+        });
+      }
+
+      // When using Twilio Verify, we don't need to store OTP in our database
+      // as Twilio manages the verification process
 
       res.json({
-        message: `OTP has been sent to your phone number`,
+        message: `Verification code has been sent to your phone number`,
         userId: user._id,
       });
     } catch (error) {

@@ -8,7 +8,7 @@ const authMiddleware = require("../utils/authMiddleWare");
 router.post("/sign-up", userController.signUp);
 router.post("/sign-in", userController.signIn);
 router.post("/verify-otp", userController.verifyOtp);
-router.post("/resend-otp", userController.resendOtp);
+router.post("/resend-otp", userController.resendOTP);
 router.get("/all-users", userController.fetchAllUsers);
 router.post("/forgot-pass", userController.forgotPassword);
 router.post("/reset-pass", userController.resetPassword);
