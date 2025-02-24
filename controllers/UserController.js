@@ -235,6 +235,7 @@ const userController = {
   },
 
   // Function to reset password
+  // Function to reset password
   resetPassword: async (req, res) => {
     try {
       const { phone_number, otp, password } = req.body;
@@ -245,20 +246,37 @@ const userController = {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Verify OTP
-      if (user.otp !== parseInt(otp)) {
-        return res.status(400).json({ error: "Invalid OTP" });
+      // Format phone number for Twilio
+      let formattedNumber = phone_number;
+      if (phone_number.startsWith("0")) {
+        formattedNumber = `+234${phone_number.slice(1)}`;
+      } else if (!phone_number.startsWith("+")) {
+        formattedNumber = `+${phone_number}`;
       }
 
-      if (Date.now() > user.otpExpiry) {
-        return res.status(400).json({ error: "OTP expired" });
+      // Verify the OTP with Twilio
+      try {
+        const verification_check = await twilioClient.verify.v2
+          .services(process.env.TWILIO_VERIFY_SERVICE_ID)
+          .verificationChecks.create({
+            to: formattedNumber,
+            code: otp,
+          });
+
+        // If the verification failed
+        if (verification_check.status !== "approved") {
+          return res
+            .status(400)
+            .json({ error: "Invalid or expired verification code" });
+        }
+      } catch (error) {
+        console.error("Twilio Verify Check Error:", error);
+        return res.status(400).json({ error: "Failed to verify code" });
       }
 
       // Update password
       const hashNewPassword = await bcrypt.hash(password, 12);
       user.password = hashNewPassword;
-      user.otp = null;
-      user.otpExpiry = null;
 
       await user.save();
 
