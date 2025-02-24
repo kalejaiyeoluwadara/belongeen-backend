@@ -65,7 +65,7 @@ const sendWhatsAppMessage = async (phone_number) => {
     } else if (!formattedNumber.startsWith("+")) {
       formattedNumber = `+${formattedNumber}`;
     }
-
+    // remove env
     // Generate 6-digit OTP
     const otp = crypto.randomInt(100000, 999999).toString();
 
