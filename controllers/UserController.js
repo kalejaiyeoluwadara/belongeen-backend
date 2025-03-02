@@ -106,7 +106,7 @@ const sendWhatsAppMessage = async (phone_number) => {
     data.append("From", `whatsapp:${TWILIO_WHATSAPP_NUMBER}`);
     data.append("ContentSid", TWILIO_WHATSAPP_CONTENT_SID);
     data.append("ContentVariables", JSON.stringify({ 1: otp }));
-
+    // HXf878d4ae02de6409a0e12a1d2047d205;
     // Send the request to Twilio API
     const response = await axios.post(url, data, {
       auth: {
@@ -118,7 +118,7 @@ const sendWhatsAppMessage = async (phone_number) => {
       },
     });
 
-    console.log(`WhatsApp OTP sent to ${formattedNumber}:`, response.data.sid);
+    console.log(`WhatsApp OTP sent to ${formattedNumber}:`, response.data);
     return { success: true, otp };
   } catch (error) {
     console.error(
@@ -156,6 +156,49 @@ const verifyOTP = async (phone_number, otp) => {
 };
 
 const userController = {
+  // Forgot Password Function
+  forgotPassword: async (req, res) => {
+    try {
+      let { phone_number } = req.body;
+
+      if (!phone_number || phone_number.length < 10) {
+        return res.status(400).json({ error: "Invalid phone number format" });
+      }
+
+      const user = await User.findOne({ phone_number });
+
+      if (!user) {
+        return res.status(404).json({ error: "User does not exist" });
+      }
+
+      // Generate a 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // Expires in 10 minutes
+
+      // Store OTP and expiry in the user model
+      user.otp = otp;
+      user.otpExpiry = otpExpiry;
+      await user.save();
+
+      // Send OTP via WhatsApp
+      const result = await sendWhatsAppMessage(phone_number);
+
+      if (!result.success) {
+        console.log(result);
+        return res.status(500).json({
+          error: "Failed to send OTP via WhatsApp",
+          details: result.error?.message,
+        });
+      }
+
+      res.json({
+        message: "Verification OTP has been sent via WhatsApp.",
+        userId: user._id,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
   signIn: async (req, res) => {
     try {
       const { phone_number, password } = req.body;
@@ -267,49 +310,6 @@ const userController = {
       res.json({ message: "OTP verifed successfully" });
     } catch (error) {
       return res.status(500).json({ error: error.message });
-    }
-  },
-  // Forgot Password Function
-  forgotPassword: async (req, res) => {
-    try {
-      let { phone_number } = req.body;
-
-      if (!phone_number || phone_number.length < 10) {
-        return res.status(400).json({ error: "Invalid phone number format" });
-      }
-
-      const user = await User.findOne({ phone_number });
-
-      if (!user) {
-        return res.status(404).json({ error: "User does not exist" });
-      }
-
-      // Generate a 6-digit OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // Expires in 10 minutes
-
-      // Store OTP and expiry in the user model
-      user.otp = otp;
-      user.otpExpiry = otpExpiry;
-      await user.save();
-
-      // Send OTP via WhatsApp
-      const result = await sendWhatsAppMessage(phone_number);
-
-      if (!result.success) {
-        console.log(result);
-        return res.status(500).json({
-          error: "Failed to send OTP via WhatsApp",
-          details: result.error?.message,
-        });
-      }
-
-      res.json({
-        message: "Verification OTP has been sent via WhatsApp.",
-        userId: user._id,
-      });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
     }
   },
 
