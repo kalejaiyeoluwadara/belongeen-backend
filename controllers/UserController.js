@@ -202,23 +202,45 @@ const userController = {
   // Function to resend OTP
   resendOTP: async (req, res) => {
     try {
-      const { phone_number } = req.body;
+      const { email } = req.body;
 
-      const user = await User.findOne({ phone_number });
+      // Validate email
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      // Find user by email
+      const user = await User.findOne({ email });
+
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Generate new OTP
-      const { otp, otpExpiry } = await generateAndSendOTP(phone_number);
+      // Generate a 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // Expires in 10 minutes
 
       // Update user record
       user.otp = otp;
       user.otpExpiry = otpExpiry;
       await user.save();
 
-      res.json({ message: "New OTP sent successfully" });
+      // Send OTP via Email
+      const emailResult = await sendOtpEmail(user.email, otp);
+
+      if (!emailResult.success) {
+        return res.status(500).json({
+          error: "Failed to send OTP via Email",
+          details: emailResult.error,
+        });
+      }
+
+      res.json({
+        message: "New verification OTP has been sent to your email.",
+        userId: user._id,
+      });
     } catch (error) {
+      console.error("Resend OTP Error:", error);
       res.status(500).json({ error: error.message });
     }
   },
