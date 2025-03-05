@@ -1,204 +1,15 @@
 require("dotenv").config();
 const User = require("../models/User");
-const ProductCategory = require("../models/ProductCategory");
 const Product = require("../models/Product");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const Order = require("../models/Order");
 const crypto = require("crypto");
 const mongoose = require("mongoose");
 const { StatusCodes } = require("http-status-codes");
-const axios = require("axios");
-const sendVerificationEmail = require("../utils/sendVerificationEmail");
-const sendPasswordResetEmail = require("../utils/sendResetEmail");
-// Twilio setup
-const twilio = require("twilio");
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
-const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
-
-// Log Twilio credentials for debugging (remove in production)
-console.log("Twilio Account SID:", process.env.TWILIO_ACCOUNT_SID);
-
-// Setup Twilio Verify
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
-
-// Function to send verification code using Twilio Verify
-const sendVerificationCode = async (phone_number) => {
-  try {
-    // Ensure phone number is in international format
-    let formattedNumber = phone_number;
-    if (phone_number.startsWith("0")) {
-      formattedNumber = `+234${phone_number.slice(1)}`;
-    } else if (!phone_number.startsWith("+")) {
-      formattedNumber = `+${phone_number}`;
-    }
-
-    console.log("Sending verification to:", formattedNumber);
-
-    // Create verification request
-    const verification = await twilioClient.verify.v2
-      .services(process.env.TWILIO_VERIFY_SERVICE_ID) // Use the correct Verify Service SID
-      .verifications.create({
-        to: formattedNumber,
-        channel: "sms",
-      });
-
-    console.log(
-      `Verification SID: ${verification.sid}, Status: ${verification.status}`
-    );
-    return { success: verification.status === "pending" };
-  } catch (error) {
-    console.error("Twilio Verify Error:", error);
-    console.error("Error Details:", error.details || "No details available");
-    return { success: false, error };
-  }
-};
-const sendWhatsAppMessage = async (phone_number) => {
-  try {
-    // Ensure phone number is in E.164 format
-    let formattedNumber = phone_number.trim();
-    if (formattedNumber.startsWith("0")) {
-      formattedNumber = `+234${formattedNumber.slice(1)}`;
-    } else if (!formattedNumber.startsWith("+")) {
-      formattedNumber = `+${formattedNumber}`;
-    }
-    // remove env
-    // Generate 6-digit OTP
-    const otp = crypto.randomInt(100000, 999999).toString();
-
-    // Find the user and update OTP in the database
-    const user = await User.findOneAndUpdate(
-      { phone_number: phone_number },
-      { otp },
-      { new: true }
-    );
-
-    if (!user) {
-      return { success: false, error: "User not found" };
-    }
-
-    // Twilio Credentials
-    const {
-      TWILIO_ACCOUNT_SID,
-      TWILIO_AUTH_TOKEN,
-      TWILIO_WHATSAPP_NUMBER,
-      TWILIO_WHATSAPP_CONTENT_SID,
-    } = process.env;
-
-    if (
-      !TWILIO_ACCOUNT_SID ||
-      !TWILIO_AUTH_TOKEN ||
-      !TWILIO_WHATSAPP_NUMBER ||
-      !TWILIO_WHATSAPP_CONTENT_SID
-    ) {
-      throw new Error("Missing Twilio environment variables.");
-    }
-
-    // API Endpoint
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-
-    // Request Data
-    const data = new URLSearchParams();
-    data.append("To", `whatsapp:${formattedNumber}`);
-    data.append("From", `whatsapp:${TWILIO_WHATSAPP_NUMBER}`);
-    data.append("ContentSid", TWILIO_WHATSAPP_CONTENT_SID);
-    data.append("ContentVariables", JSON.stringify({ 1: otp }));
-    // HXf878d4ae02de6409a0e12a1d2047d205;
-    // Send the request to Twilio API
-    const response = await axios.post(url, data, {
-      auth: {
-        username: TWILIO_ACCOUNT_SID,
-        password: TWILIO_AUTH_TOKEN,
-      },
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    });
-
-    console.log(`WhatsApp OTP sent to ${formattedNumber}:`, response.data);
-    return { success: true, otp };
-  } catch (error) {
-    console.error(
-      "WhatsApp Message Error:",
-      error.response?.data || error.message
-    );
-    return { success: false, error: error.response?.data || error.message };
-  }
-};
-
-// Function to check verification code
-const verifyOTP = async (phone_number, otp) => {
-  try {
-    // Ensure phone number is in international format
-    let formattedNumber = phone_number;
-    if (phone_number.startsWith("0")) {
-      formattedNumber = `+234${phone_number.slice(1)}`;
-    } else if (!phone_number.startsWith("+")) {
-      formattedNumber = `+${phone_number}`;
-    }
-
-    // Check the verification code
-    const verification_check = await twilioClient.verify.v2
-      .services(TWILIO_VERIFY_SERVICE_ID)
-      .verificationChecks.create({
-        to: formattedNumber,
-        code: otp,
-      });
-
-    return verification_check.status === "approved";
-  } catch (error) {
-    console.error("Twilio Verify Check Error:", error);
-    return false;
-  }
-};
-
+const sendOtpEmail = require("../utils/sendOtpEmail");
 const userController = {
   // Forgot Password Function
-  forgotPassword: async (req, res) => {
-    try {
-      let { phone_number } = req.body;
 
-      if (!phone_number || phone_number.length < 10) {
-        return res.status(400).json({ error: "Invalid phone number format" });
-      }
-
-      const user = await User.findOne({ phone_number });
-
-      if (!user) {
-        return res.status(404).json({ error: "User does not exist" });
-      }
-
-      // Generate a 6-digit OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // Expires in 10 minutes
-
-      // Store OTP and expiry in the user model
-      user.otp = otp;
-      user.otpExpiry = otpExpiry;
-      await user.save();
-
-      // Send OTP via WhatsApp
-      const result = await sendWhatsAppMessage(phone_number);
-
-      if (!result.success) {
-        console.log(result);
-        return res.status(500).json({
-          error: "Failed to send OTP via WhatsApp",
-          details: result.error?.message,
-        });
-      }
-
-      res.json({
-        message: "Verification OTP has been sent via WhatsApp.",
-        userId: user._id,
-      });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
   signIn: async (req, res) => {
     try {
       const { phone_number, password } = req.body;
@@ -247,7 +58,7 @@ const userController = {
   signUp: async (req, res) => {
     //SignUp is done with email and password
     try {
-      const { password, fullName, hall, phone_number } = req.body;
+      const { password, fullName, hall, phone_number, email } = req.body;
 
       //Check if user already exists in the database with the email
       const existingUser = await User.findOne({ phone_number });
@@ -266,6 +77,7 @@ const userController = {
       const hashedPassword = await bcrypt.hash(password, saltRounds);
       const user = new User({
         hall,
+        email,
         phone_number,
         fullName,
         password: hashedPassword,
@@ -284,69 +96,109 @@ const userController = {
     }
   },
 
-  verifyOtp: async (req, res) => {
+  forgotPassword: async (req, res) => {
     try {
-      const { email, otp } = req.body;
+      const { email } = req.body;
 
-      //Find user by email
+      // Validate email
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      // Find user by email
       const user = await User.findOne({ email });
 
       if (!user) {
-        return res.status(400).json({ error: "User not found" });
-      }
-      if (user.otp !== parseInt(otp)) {
-        return res.status(400).json({ error: "Invalid OTP" });
-      }
-      if (Date.now() > user.otpExpiry) {
-        return res.status(400).json({ error: "OTP expired" });
+        return res.status(404).json({ error: "User does not exist" });
       }
 
-      //If OTP is valid, clear OTP and OTP EXPIRY
-      user.otp = null;
-      user.otpExpiry = null;
-      user.isVerified = true;
+      // Generate a 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // Expires in 10 minutes
+
+      // Store OTP and expiry in the user model
+      user.otp = otp;
+      user.otpExpiry = otpExpiry;
       await user.save();
 
-      res.json({ message: "OTP verifed successfully" });
+      // Send OTP via Email
+      const emailResult = await sendOtpEmail(user.email, otp);
+
+      if (!emailResult.success) {
+        return res.status(500).json({
+          error: "Failed to send OTP via Email",
+          details: emailResult.error,
+        });
+      }
+
+      res.json({
+        message: "Verification OTP has been sent to your email.",
+        userId: user._id,
+      });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  },
-
-  // Function to reset password
-  resetPassword: async (req, res) => {
-    try {
-      const { phone_number, otp, password } = req.body;
-
-      // Find user
-      const user = await User.findOne({ phone_number });
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      // Verify OTP
-      if (user.otp !== parseInt(otp)) {
-        return res.status(400).json({ error: "Invalid OTP" });
-      }
-
-      if (Date.now() > user.otpExpiry) {
-        return res.status(400).json({ error: "OTP expired" });
-      }
-
-      // Update password
-      const hashNewPassword = await bcrypt.hash(password, 12);
-      user.password = hashNewPassword;
-      user.otp = null;
-      user.otpExpiry = null;
-
-      await user.save();
-
-      res.json({ message: "Password updated successfully" });
-    } catch (error) {
+      console.error("Forgot Password Error:", error);
       res.status(500).json({ error: error.message });
     }
   },
 
+  // Verify OTP Controller
+  verifyOtp: async (req, res) => {
+    try {
+      const { email, otp } = req.body;
+
+      // Find user by email
+      const user = await User.findOne({ email });
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Check if OTP matches and is not expired
+      if (user.otp !== otp || !user.otpExpiry || user.otpExpiry < new Date()) {
+        return res.status(400).json({ error: "Invalid or expired OTP" });
+      }
+
+      // Clear OTP after successful verification
+      user.otp = undefined;
+      user.otpExpiry = undefined;
+      await user.save();
+
+      res.json({
+        message: "OTP verified successfully",
+        userId: user._id,
+      });
+    } catch (error) {
+      console.error("OTP Verification Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  // Reset Password Controller
+  resetPassword: async (req, res) => {
+    try {
+      const { email, newPassword } = req.body;
+
+      // Find user by email
+      const user = await User.findOne({ email });
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Hash the new password
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+      // Update user's password
+      user.password = hashedPassword;
+      await user.save();
+
+      res.json({ message: "Password reset successfully" });
+    } catch (error) {
+      console.error("Password Reset Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
   // Function to resend OTP
   resendOTP: async (req, res) => {
     try {
