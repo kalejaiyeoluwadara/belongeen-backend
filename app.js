@@ -13,6 +13,7 @@ const xss = require("xss-clean");
 const cors = require("cors");
 const mongoSanitize = require("express-mongo-sanitize");
 const productRoutes = require("./routes/productRoute");
+const paymentVerificationRoute = require("./routes/PaymentVerificationRoute");
 const shopRoutes = require("./routes/shopRoute");
 const orderRoutes = require("./routes/orderRoute");
 const adminRoutes = require("./routes/AdminRoute");
@@ -54,6 +55,7 @@ app.use(`${path}/product`, productRoutes);
 app.use(`${path}/order`, orderRoutes);
 app.use(`${path}/user`, userRoute);
 app.use(`${path}/menu`, MenuRoute);
+app.use(`${path}/payment`, paymentVerificationRoute);
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 
