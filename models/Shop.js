@@ -11,6 +11,10 @@ const shopSchema = new Schema({
     type: String,
     unique: true,
   },
+  deliveryPrice: {
+    type: Number,
+    default: 600,
+  },
   category: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "ShopsCategory",

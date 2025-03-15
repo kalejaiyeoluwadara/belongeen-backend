@@ -20,10 +20,10 @@ const orderController = {
           .json({ error: "Order price and items are required" });
       }
 
-      // Generate a unique order ID (13-digit number)
-      const orderId = Math.floor(Math.random() * 10 ** 13)
-        .toString()
-        .padStart(13, "0");
+      // Generate a unique order ID in the format: BLGN-1742032259590-40
+      const timestamp = Date.now(); // 13-digit timestamp
+      const randomNum = Math.floor(10 + Math.random() * 90); // Random 2-digit number
+      const orderId = `BLGN-${timestamp}-${randomNum}`;
 
       // Create a new order
       const newOrder = new Order({

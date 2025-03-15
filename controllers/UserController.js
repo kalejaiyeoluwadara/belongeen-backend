@@ -471,40 +471,150 @@ const userController = {
     }
   },
 
+  // getItemsInCart: async (req, res) => {
+  //   try {
+  //     const userId = req.user._id;
+
+  //     const user = await User.findById(userId).populate(
+  //       "cart.product",
+  //       "productTitle price images"
+  //     );
+
+  //     if (!user) {
+  //       return res.status(404).json({ error: "User not found" });
+  //     }
+
+  //     // Calculate the total amount in the cart
+  //     let totalCartAmount = 0;
+
+  //     const cart = user.cart.map((item) => {
+  //       const productPrice = parseFloat(item.product.price); // Ensure it's a number
+  //       const condimentPrice = item.condiments.reduce(
+  //         (total, condiment) => total + parseFloat(condiment.price), // Ensure each condiment price is a number
+  //         0
+  //       );
+  //       const totalPrice = (productPrice + condimentPrice) * item.qty;
+  //       totalCartAmount += totalPrice;
+
+  //       return {
+  //         ...item.toObject(),
+  //         totalPrice,
+  //       };
+  //     });
+
+  //     res.status(200).json({
+  //       cart,
+  //       totalAmount: totalCartAmount.toLocaleString("en-NG", {
+  //         style: "currency",
+  //         currency: "NGN",
+  //       }),
+  //     });
+  //   } catch (error) {
+  //     res.status(500).json({ error: error.message });
+  //   }
+  // },
+  //!New update
+
+  //!New update
   getItemsInCart: async (req, res) => {
     try {
       const userId = req.user._id;
 
-      const user = await User.findById(userId).populate(
-        "cart.product",
-        "productTitle price images"
-      );
+      // Populate product and add shop information
+      const user = await User.findById(userId).populate({
+        path: "cart.product",
+        select: "productTitle price images category",
+        populate: {
+          path: "category",
+          select: "name deliveryPrice _id",
+        },
+      });
 
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Calculate the total amount in the cart
+      // Check if cart exists and has items
+      if (!user.cart || user.cart.length === 0) {
+        return res.status(200).json({
+          cart: [],
+          shopBreakdown: [],
+          subtotal: "₦0.00",
+          deliveryTotal: "₦0.00",
+          grandTotal: "₦0.00",
+        });
+      }
+
+      // Group items by shop
+      const shopGroups = {};
       let totalCartAmount = 0;
 
-      const cart = user.cart.map((item) => {
-        const productPrice = parseFloat(item.product.price); // Ensure it's a number
-        const condimentPrice = item.condiments.reduce(
-          (total, condiment) => total + parseFloat(condiment.price), // Ensure each condiment price is a number
-          0
-        );
-        const totalPrice = (productPrice + condimentPrice) * item.qty;
-        totalCartAmount += totalPrice;
+      const cart = user.cart
+        .map((item) => {
+          // Check if product exists
+          if (!item.product) {
+            return null;
+          }
 
-        return {
-          ...item.toObject(),
-          totalPrice,
-        };
-      });
+          const productPrice = parseFloat(item.product.price || 0);
+          const condimentPrice = (item.condiments || []).reduce(
+            (total, condiment) => total + parseFloat(condiment.price || 0),
+            0
+          );
+          const totalPrice = (productPrice + condimentPrice) * (item.qty || 1);
+          totalCartAmount += totalPrice;
+
+          // Make sure category exists before trying to access it
+          if (item.product.category && item.product.category._id) {
+            // Group by shop (category)
+            const shopId = item.product.category._id.toString();
+            if (!shopGroups[shopId]) {
+              shopGroups[shopId] = {
+                shopName: item.product.category.name || "Unknown Shop",
+                deliveryPrice: parseFloat(
+                  item.product.category.deliveryPrice || 0
+                ),
+                items: [],
+                subtotal: 0,
+              };
+            }
+
+            shopGroups[shopId].items.push({
+              ...item.toObject(),
+              totalPrice,
+            });
+
+            shopGroups[shopId].subtotal += totalPrice;
+          }
+
+          return {
+            ...item.toObject(),
+            totalPrice,
+          };
+        })
+        .filter(Boolean); // Remove any null items
+
+      // Calculate total delivery cost
+      let totalDeliveryAmount = 0;
+      for (const shopId in shopGroups) {
+        totalDeliveryAmount += shopGroups[shopId].deliveryPrice || 0;
+      }
+
+      // Grand total including delivery
+      const grandTotal = totalCartAmount + totalDeliveryAmount;
 
       res.status(200).json({
         cart,
-        totalAmount: totalCartAmount.toLocaleString("en-NG", {
+        shopBreakdown: Object.values(shopGroups),
+        subtotal: totalCartAmount.toLocaleString("en-NG", {
+          style: "currency",
+          currency: "NGN",
+        }),
+        deliveryTotal: totalDeliveryAmount.toLocaleString("en-NG", {
+          style: "currency",
+          currency: "NGN",
+        }),
+        grandTotal: grandTotal.toLocaleString("en-NG", {
           style: "currency",
           currency: "NGN",
         }),
