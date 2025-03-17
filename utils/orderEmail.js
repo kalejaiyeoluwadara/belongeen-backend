@@ -16,26 +16,45 @@ const transporter = nodemailer.createTransport({
  */
 const sendOrderAdminEmail = async (orderData, adminEmail) => {
   try {
-    // Format order items for display
-    const orderItemsHtml = orderData.orderItems.map(item => `
-      <tr>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.product.name || 'Product'}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.qty}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;">₦${(item.product.price * item.qty).toLocaleString()}</td>
-      </tr>
-    `).join('');
+    // Filter out invalid products and format order items
+    const orderItemsHtml = orderData.orderItems
+      .filter((item) => item.product) // Remove items with null products
+      .map(
+        (item) => `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #ddd;">${
+            item.product?.name || "Unnamed Product"
+          }</td>
+          <td style="padding: 8px; border-bottom: 1px solid #ddd;">${
+            item.qty
+          }</td>
+          <td style="padding: 8px; border-bottom: 1px solid #ddd;">₦${(
+            item.product?.price * item.qty
+          ).toLocaleString()}</td>
+        </tr>
+      `
+      )
+      .join("");
 
-    // Format condiments if available
-    const condimentsHtml = orderData.orderItems.some(item => item.condiments && item.condiments.length > 0) 
+    // Format condiments safely
+    const condimentsHtml = orderData.orderItems.some(
+      (item) => item.condiments && item.condiments.length > 0
+    )
       ? `<h3 style="margin-top: 15px; color: #333;">Condiments/Add-ons:</h3>
          <ul style="padding-left: 20px; color: #555;">
-         ${orderData.orderItems.flatMap(item => 
-            item.condiments && item.condiments.map(c => 
-              `<li>${c.name} - ₦${c.price.toLocaleString()}</li>`
-            ) || []
-         ).join('')}
+         ${orderData.orderItems
+           .flatMap(
+             (item) =>
+               item.condiments?.map(
+                 (c) =>
+                   `<li>${c.name || "Unknown Condiment"} - ₦${
+                     c.price?.toLocaleString() || "0"
+                   }</li>`
+               ) || []
+           )
+           .join("")}
          </ul>`
-      : '';
+      : "";
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
@@ -43,7 +62,7 @@ const sendOrderAdminEmail = async (orderData, adminEmail) => {
       subject: `New Order Received (#${orderData.orderId})`,
       html: `
       <!DOCTYPE html>
-      <html lang="en" style="padding: 0; margin: 0; box-sizing: border-box; font-family: 'Nunito', 'Segoe UI', 'Arial Rounded MT', 'Open Sans', 'Helvetica', 'Arial', sans-serif;">
+      <html lang="en">
       <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -76,23 +95,33 @@ const sendOrderAdminEmail = async (orderData, adminEmail) => {
                           </tr>
                           <tr>
                               <td style="font-weight: bold; color: #555;">Customer:</td>
-                              <td style="color: #333;">${orderData.user.fullName}</td>
+                              <td style="color: #333;">${
+                                orderData.user.fullName
+                              }</td>
                           </tr>
                           <tr>
                               <td style="font-weight: bold; color: #555;">Hall:</td>
-                              <td style="color: #333;">${orderData.user.hall}</td>
+                              <td style="color: #333;">${
+                                orderData.user.hall
+                              }</td>
                           </tr>
                           <tr>
                               <td style="font-weight: bold; color: #555;">Phone:</td>
-                              <td style="color: #333;">${orderData.user.phone_number}</td>
+                              <td style="color: #333;">${
+                                orderData.user.phone_number
+                              }</td>
                           </tr>
                           <tr>
                               <td style="font-weight: bold; color: #555;">Date:</td>
-                              <td style="color: #333;">${new Date(orderData.date).toLocaleString()}</td>
+                              <td style="color: #333;">${new Date(
+                                orderData.date
+                              ).toLocaleString()}</td>
                           </tr>
                           <tr>
                               <td style="font-weight: bold; color: #555;">Total Amount:</td>
-                              <td style="font-weight: bold; color: #1a8754;">₦${parseFloat(orderData.orderPrice).toLocaleString()}</td>
+                              <td style="font-weight: bold; color: #1a8754;">₦${parseFloat(
+                                orderData.orderPrice
+                              ).toLocaleString()}</td>
                           </tr>
                       </table>
                       
@@ -103,7 +132,10 @@ const sendOrderAdminEmail = async (orderData, adminEmail) => {
                               <th align="left" style="padding: 8px; border-bottom: 2px solid #ddd;">Quantity</th>
                               <th align="left" style="padding: 8px; border-bottom: 2px solid #ddd;">Price</th>
                           </tr>
-                          ${orderItemsHtml}
+                          ${
+                            orderItemsHtml ||
+                            '<tr><td colspan="3" style="padding: 8px; text-align: center;">No valid products in this order</td></tr>'
+                          }
                       </table>
                       
                       ${condimentsHtml}
@@ -135,25 +167,42 @@ const sendOrderAdminEmail = async (orderData, adminEmail) => {
 const sendOrderCustomerEmail = async (orderData) => {
   try {
     // Format order items for display
-    const orderItemsHtml = orderData.orderItems.map(item => `
-      <tr>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.product.name || 'Product'}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.qty}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;">₦${(item.product.price * item.qty).toLocaleString()}</td>
-      </tr>
-    `).join('');
+    const orderItemsHtml = orderData.orderItems
+      .map((item) => {
+        const productName = item.product?.name || "Unknown Product";
+        const productPrice = item.product?.price || 0;
+
+        return `
+    <tr>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">${productName}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.qty}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">₦${(
+        productPrice * item.qty
+      ).toLocaleString()}</td>
+    </tr>
+  `;
+      })
+      .join("");
 
     // Format condiments if available
-    const condimentsHtml = orderData.orderItems.some(item => item.condiments && item.condiments.length > 0) 
+    const condimentsHtml = orderData.orderItems.some(
+      (item) => item.condiments?.length > 0
+    )
       ? `<h3 style="margin-top: 15px; color: #333;">Your Add-ons:</h3>
-         <ul style="padding-left: 20px; color: #555;">
-         ${orderData.orderItems.flatMap(item => 
-            item.condiments && item.condiments.map(c => 
-              `<li>${c.name} - ₦${c.price.toLocaleString()}</li>`
-            ) || []
-         ).join('')}
-         </ul>`
-      : '';
+     <ul style="padding-left: 20px; color: #555;">
+     ${orderData.orderItems
+       .flatMap(
+         (item) =>
+           item.condiments?.map(
+             (c) =>
+               `<li>${c?.name || "Unknown"} - ₦${
+                 c?.price?.toLocaleString() || 0
+               }</li>`
+           ) || []
+       )
+       .join("")}
+     </ul>`
+      : "";
 
     // Calculate delivery fee and subtotal (assuming 1000 naira delivery fee)
     const deliveryFee = 1000;
@@ -199,11 +248,15 @@ const sendOrderCustomerEmail = async (orderData) => {
                           </tr>
                           <tr>
                               <td style="font-weight: bold; color: #555;">Order Date:</td>
-                              <td style="color: #333;">${new Date(orderData.date).toLocaleString()}</td>
+                              <td style="color: #333;">${new Date(
+                                orderData.date
+                              ).toLocaleString()}</td>
                           </tr>
                           <tr>
                               <td style="font-weight: bold; color: #555;">Delivery Location:</td>
-                              <td style="color: #333;">${orderData.user.hall}</td>
+                              <td style="color: #333;">${
+                                orderData.user.hall
+                              }</td>
                           </tr>
                       </table>
                       
@@ -230,7 +283,9 @@ const sendOrderCustomerEmail = async (orderData) => {
                           </tr>
                           <tr>
                               <td style="text-align: right; font-weight: bold; color: #555; border-top: 1px solid #ddd; padding-top: 10px;">Total:</td>
-                              <td style="text-align: right; font-weight: bold; color: #1a8754; border-top: 1px solid #ddd; padding-top: 10px;">₦${parseFloat(orderData.orderPrice).toLocaleString()}</td>
+                              <td style="text-align: right; font-weight: bold; color: #1a8754; border-top: 1px solid #ddd; padding-top: 10px;">₦${parseFloat(
+                                orderData.orderPrice
+                              ).toLocaleString()}</td>
                           </tr>
                       </table>
                   </td>

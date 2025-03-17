@@ -1,6 +1,7 @@
 const Order = require("../models/Order");
 const User = require("../models/User");
-
+const { sendOrderEmails } = require("../utils/orderEmail");
+sendOrderEmails;
 const orderController = {
   createOrder: async (req, res) => {
     try {
@@ -20,9 +21,9 @@ const orderController = {
           .json({ error: "Order price and items are required" });
       }
 
-      // Generate a unique order ID in the format: BLGN-1742032259590-40
-      const timestamp = Date.now(); // 13-digit timestamp
-      const randomNum = Math.floor(10 + Math.random() * 90); // Random 2-digit number
+      // Generate a unique order ID
+      const timestamp = Date.now();
+      const randomNum = Math.floor(10 + Math.random() * 90);
       const orderId = `BLGN-${timestamp}-${randomNum}`;
 
       // Create a new order
@@ -33,15 +34,35 @@ const orderController = {
         orderItems,
       });
 
-      // Save the order to the database
+      // Save the order
       await newOrder.save();
 
-      // Respond with the created order
-      res.status(201).json({ message: "Order created successfully", newOrder });
+      // Populate order details (but do NOT await email sending)
+      const populatedOrder = await Order.findById(newOrder._id)
+        .populate("user")
+        .populate({
+          path: "orderItems.product",
+          select: "name price image description",
+        });
+
+      // Send response immediately
+      res.status(201).json({
+        message: "Order created successfully",
+        newOrder: populatedOrder,
+      });
+
+      // Handle email sending in the background
+      const adminEmail = "kalejaiyeoluwadara1@gmail.com";
+      sendOrderEmails(populatedOrder, adminEmail)
+        .then((emailResult) =>
+          console.log("Email sending result:", emailResult)
+        )
+        .catch((emailError) =>
+          console.error("Error sending order emails:", emailError)
+        );
     } catch (error) {
       console.error("Error creating order:", error);
 
-      // Check for validation or database errors and send appropriate response
       if (error.name === "ValidationError") {
         return res.status(400).json({
           error: "Validation error",
@@ -50,14 +71,12 @@ const orderController = {
       }
 
       if (error.code && error.code === 11000) {
-        // Handle duplicate key error (e.g., unique constraint)
         return res.status(409).json({
           error: "Duplicate entry",
           details: error.keyValue,
         });
       }
 
-      // Default to 500 for unexpected errors
       res.status(500).json({
         error: "An unexpected error occurred while creating the order",
         details: error.message,
