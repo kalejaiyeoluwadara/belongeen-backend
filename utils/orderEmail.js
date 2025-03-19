@@ -23,7 +23,7 @@ const sendOrderAdminEmail = async (orderData, adminEmail) => {
         (item) => `
         <tr>
           <td style="padding: 8px; border-bottom: 1px solid #ddd;">${
-            item.product?.name || "Unnamed Product"
+            item.product?.productTitle || "Unnamed Product"
           }</td>
           <td style="padding: 8px; border-bottom: 1px solid #ddd;">${
             item.qty
@@ -47,7 +47,7 @@ const sendOrderAdminEmail = async (orderData, adminEmail) => {
              (item) =>
                item.condiments?.map(
                  (c) =>
-                   `<li>${c.name || "Unknown Condiment"} - ₦${
+                   `<li>${c.productTitle || "Unknown Condiment"} - ₦${
                      c.price?.toLocaleString() || "0"
                    }</li>`
                ) || []
@@ -169,7 +169,7 @@ const sendOrderCustomerEmail = async (orderData) => {
     // Format order items for display
     const orderItemsHtml = orderData.orderItems
       .map((item) => {
-        const productName = item.product?.name || "Unknown Product";
+        const productName = item.product?.productTitle || "Unknown Product";
         const productPrice = item.product?.price || 0;
 
         return `
@@ -195,7 +195,7 @@ const sendOrderCustomerEmail = async (orderData) => {
          (item) =>
            item.condiments?.map(
              (c) =>
-               `<li>${c?.name || "Unknown"} - ₦${
+               `<li>${c?.productTitle || "Unknown"} - ₦${
                  c?.price?.toLocaleString() || 0
                }</li>`
            ) || []

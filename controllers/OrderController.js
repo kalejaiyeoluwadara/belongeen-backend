@@ -42,7 +42,7 @@ const orderController = {
         .populate("user")
         .populate({
           path: "orderItems.product",
-          select: "name price image description",
+          select: "productTitle price description",
         });
 
       // Send response immediately
