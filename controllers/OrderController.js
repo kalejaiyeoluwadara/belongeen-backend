@@ -52,7 +52,7 @@ const orderController = {
       });
 
       // Handle email sending in the background
-      const adminEmail = "kalejaiyeoluwadara1@gmail.com";
+      const adminEmail = process.env.ADMIN_EMAIL;
       sendOrderEmails(populatedOrder, adminEmail)
         .then((emailResult) =>
           console.log("Email sending result:", emailResult)

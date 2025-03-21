@@ -204,10 +204,6 @@ const sendOrderCustomerEmail = async (orderData) => {
      </ul>`
       : "";
 
-    // Calculate delivery fee and subtotal (assuming 1000 naira delivery fee)
-    const deliveryFee = 1000;
-    const subtotal = parseFloat(orderData.orderPrice) - deliveryFee;
-
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: orderData.user.email,
@@ -273,14 +269,8 @@ const sendOrderCustomerEmail = async (orderData) => {
                       ${condimentsHtml}
                       
                       <table width="100%" cellspacing="0" cellpadding="5" style="border-collapse: collapse; margin-top: 20px;">
-                          <tr>
-                              <td style="text-align: right; font-weight: bold; color: #555;">Subtotal:</td>
-                              <td style="text-align: right; width: 30%; color: #333;">₦${subtotal.toLocaleString()}</td>
-                          </tr>
-                          <tr>
-                              <td style="text-align: right; font-weight: bold; color: #555;">Delivery Fee:</td>
-                              <td style="text-align: right; color: #333;">₦${deliveryFee.toLocaleString()}</td>
-                          </tr>
+                         
+
                           <tr>
                               <td style="text-align: right; font-weight: bold; color: #555; border-top: 1px solid #ddd; padding-top: 10px;">Total:</td>
                               <td style="text-align: right; font-weight: bold; color: #1a8754; border-top: 1px solid #ddd; padding-top: 10px;">₦${parseFloat(
