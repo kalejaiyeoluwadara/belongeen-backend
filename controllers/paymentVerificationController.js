@@ -12,7 +12,7 @@ const paystackController = {
         return res.status(400).json({ error: "Payment reference is required" });
       }
 
-      const secretKey = process.env.PAYSTACK_SECRET_KEY_TEST;
+      const secretKey = process.env.PAYSTACK_SECRET_KEY_LIVE;
 
       const options = {
         hostname: "api.paystack.co",
