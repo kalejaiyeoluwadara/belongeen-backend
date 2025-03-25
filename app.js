@@ -20,7 +20,6 @@ const adminRoutes = require("./routes/AdminRoute");
 const userRoute = require("./routes/userRoute");
 const MenuRoute = require("./routes/MenuRoute");
 const shopsCategoryRoutes = require("./routes/ShopsCategoryRoute");
-const productCategoryRoutes = require("./routes/productsCategoryRoute");
 app.use(express.urlencoded({ extended: true }));
 // database
 const connectDB = require("./db/connect");
@@ -49,7 +48,6 @@ app.get("/", (req, res) => {
 });
 app.use(`${path}/admin`, adminRoutes);
 app.use(`${path}/categories`, shopsCategoryRoutes);
-app.use(`${path}/product-category`, productCategoryRoutes);
 app.use(`${path}/shop`, shopRoutes);
 app.use(`${path}/product`, productRoutes);
 app.use(`${path}/order`, orderRoutes);
