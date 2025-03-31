@@ -696,7 +696,7 @@ const userController = {
       }
 
       res.status(200).json({
-        message: "Phone number added/updated successfully",
+        message: "Phone number updated successfully",
         user: updatedUser,
       });
     } catch (error) {
