@@ -6,7 +6,7 @@ const shopController = {
   // CREATE SHOP
   createShop: async (req, res) => {
     try {
-      const { name, category } = req.body;
+      const { name, category, deliveryPrice } = req.body;
 
       // Check if a shop already exists with the same name
       const existingShop = await Shop.findOne({ name });
@@ -21,10 +21,16 @@ const shopController = {
         return res.status(400).json({ error: "Image file is required" });
       }
 
+      // Check is all fields are provided
+      if (!name || !category || !deliveryPrice) {
+        return res.status(400).json({ error: "All fields are required" });
+      }
+
       // Create a new shop with the uploaded image URL from Cloudinary
       const newShop = new Shop({
         name,
         category,
+        deliveryPrice,
         shop_image: req.file.path, // Use the Cloudinary URL directly from multer's response
       });
       await newShop.save();
@@ -127,19 +133,29 @@ const shopController = {
   editShop: async (req, res) => {
     try {
       const shopId = req.params.id;
-      const { name } = req.body;
-
-      // Check if a shop with the new name already exists (excluding the current one)
-      const existingShop = await Shop.findOne({ name });
-
-      if (existingShop && existingShop._id.toString() !== shopId) {
+      const { name, deliveryPrice } = req.body;
+  
+      // Find the shop we're updating first
+      const existingShop = await Shop.findById(shopId);
+      
+      if (!existingShop) {
+        return res.status(404).json({ error: "Shop not found" });
+      }
+  
+      // Check if a different shop with the new name already exists
+      const nameConflict = await Shop.findOne({ 
+        name, 
+        _id: { $ne: shopId } 
+      });
+  
+      if (nameConflict) {
         return res
           .status(400)
           .json({ error: "A shop with this name already exists" });
       }
-
-      let imageUrl = null;
-
+  
+      let imageUrl = existingShop.shop_image; // Default to current image
+  
       // Check if a new image file was uploaded
       if (req.file) {
         // Upload the new image to Cloudinary
@@ -148,21 +164,29 @@ const shopController = {
         });
         imageUrl = result.secure_url;
       }
-
-      // Update the shop's name and/or image
+  
+      // Create update object with only fields that should be updated
+      const updateData = {
+        name
+      };
+      
+      // Only include image in update if it exists
+      if (imageUrl) {
+        updateData.shop_image = imageUrl;
+      }
+      
+      // Add deliveryPrice to update if it was provided
+      if (deliveryPrice !== undefined) {
+        updateData.deliveryPrice = deliveryPrice;
+      }
+  
+      // Update the shop
       const updatedShop = await Shop.findByIdAndUpdate(
         shopId,
-        {
-          name,
-          shop_image: imageUrl || (existingShop && existingShop.shop_image), // Use optional chaining
-        },
+        updateData,
         { new: true }
       );
-
-      if (!updatedShop) {
-        return res.status(404).json({ error: "Shop not found" });
-      }
-
+  
       res.json({ message: "Shop updated", shop: updatedShop });
     } catch (error) {
       console.error("Error updating shop:", error);
