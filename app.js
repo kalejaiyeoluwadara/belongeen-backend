@@ -20,6 +20,8 @@ const adminRoutes = require("./routes/AdminRoute");
 const userRoute = require("./routes/userRoute");
 const MenuRoute = require("./routes/MenuRoute");
 const shopsCategoryRoutes = require("./routes/ShopsCategoryRoute");
+const RequestBookRoutes = require("./routes/RequestBookRoute");
+
 app.use(express.urlencoded({ extended: true }));
 // database
 const connectDB = require("./db/connect");
@@ -54,6 +56,7 @@ app.use(`${path}/order`, orderRoutes);
 app.use(`${path}/user`, userRoute);
 app.use(`${path}/menu`, MenuRoute);
 app.use(`${path}/payment`, paymentVerificationRoute);
+app.use(`${path}/book`, RequestBookRoutes);
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 
