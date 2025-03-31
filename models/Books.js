@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const BookSchema = new mongoose.Schema({
     name: { type: String},
-    price: { type: Number},
+    author: { type: String},
     image: { type: String},
 });
 

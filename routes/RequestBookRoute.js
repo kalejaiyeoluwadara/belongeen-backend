@@ -13,5 +13,6 @@ router.post(
 
 router.get("/", RequestBookController.fetchAllBooks);
 router.get("/:id", RequestBookController.fetchBookById);
+router.delete("/:id", RequestBookController.DeleteBookRequest);
 
 module.exports = router;
